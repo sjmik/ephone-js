@@ -731,7 +731,7 @@ static int compile_dictlist_file(CompileContext *ctx, const char *path, const ch
 	}
 
 	if (ctx->f_log != NULL)
-		fprintf(ctx->f_log, "Compiling: '%s'\n", fname);
+		fprintf(ctx->f_log, "Compiling: '%s'", fname);
 
 	ctx->linenum = 0;
 
@@ -744,7 +744,7 @@ static int compile_dictlist_file(CompileContext *ctx, const char *path, const ch
 		p = (char *)malloc(length+sizeof(char *));
 		if (p == NULL) {
 			if (ctx->f_log != NULL) {
-				fprintf(ctx->f_log, "Can't allocate memory\n");
+				fprintf(ctx->f_log, "\nCan't allocate memory\n");
 				ctx->error_count++;
 			}
 			break;
@@ -1438,7 +1438,7 @@ static espeak_ng_STATUS compile_dictrules(CompileContext *ctx, FILE *f_in, FILE 
 
 				if ((ctx->group3_ix == 0) && (strlen(ctx->group_name) > 2)) {
 					if (utf8_in(&c, ctx->group_name) < 2) {
-						fprintf(ctx->f_log, "%5d: Group name longer than 2 bytes (UTF8)", ctx->linenum);
+						fprintf(ctx->f_log, " %5d: Group name longer than 2 bytes (UTF8)", ctx->linenum);
 						ctx->error_count++;
 					}
 
@@ -1513,7 +1513,7 @@ static espeak_ng_STATUS compile_dictrules(CompileContext *ctx, FILE *f_in, FILE 
 	fputc(RULE_GROUP_END, f_out);
 	fputc(0, f_out);
 
-	fprintf(ctx->f_log, "\t%d rules, %d groups (%d)\n\n", count, n_rgroups, n_groups3);
+	fprintf(ctx->f_log, "\t%d rules, %d groups (%d)\n", count, n_rgroups, n_groups3);
 	free_rules(rules, n_rules);
 	for (gp = 0; gp < n_rgroups; gp++) {
 		free(rgroup[gp].start);
@@ -1593,7 +1593,7 @@ ESPEAK_NG_API espeak_ng_STATUS espeak_ng_CompileDictionary(const char *dsource, 
 	compile_dictlist_end(ctx, f_out);
 	offset_rules = ftell(f_out);
 
-	fprintf(ctx->f_log, "Compiling: '%s'\n", fname_in);
+	fprintf(ctx->f_log, "Compiling: '%s' ", fname_in);
 
 	espeak_ng_STATUS status = compile_dictrules(ctx, f_in, f_out);
 	fclose(f_in);

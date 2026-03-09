@@ -259,13 +259,6 @@ phoneme v
     length 70
     FMT(voc/v_) addWav(vocw/v, 60)
   ENDIF
-  IF KlattSynth THEN
-    Vowelout f1=1  f2=1000 -500 -300  f3=-300 60  len=50 brk
-    IF nextPh(isPause2) THEN
-      FMT(klatt/v_) addWav(vocw/v)
-    ENDIF
-    FMT(klatt/v) addWav(vocw/v, 150)
-  ENDIF
 
   IF nextPh(isPause2) THEN
     FMT(voc/v_) addWav(vocw/v)
@@ -281,11 +274,6 @@ phoneme z
   voicingswitch s
   lengthmod 6
   Vowelout f1=0  f2=1700 -300 300  f3=-100 60  len=50
-
-  IF KlattSynth THEN
-    Vowelin f1=0 f2=1390 -300 300 f3=0 0
-    Vowelout f1=1  f2=1390 -300 300  f3=-100 60  len=50 brk
-  ENDIF
 
   IF nextPhW(v) OR nextPhW(b) THEN
     FMT(voc/z) addWav(ufric/s!, 60)
@@ -373,13 +361,6 @@ phoneme Q~
   lengthmod 6
   Vowelin f1=2  f2=2300 200 400  f3=-100 80
   Vowelout f1=2  f2=2300 250 300  f3=-300 80 brk
-
-  IF KlattSynth THEN
-    IF nextPh(isPause2) THEN
-      FMT(klatt/qqh_) addWav(vocw/Q_)
-    ENDIF
-    FMT(klatt/qqh) addWav(vocw/Q)
-  ENDIF
 
   IF nextPh(isPause2) THEN
     FMT(voc/Q_) addWav(vocw/Q_)

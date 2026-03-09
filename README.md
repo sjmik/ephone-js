@@ -1,148 +1,165 @@
-# eSpeak NG Text-to-Speech
+# ephone-js : eSpeak NG phoneme generation for the web
 
-- [Features](#features)
-- [Supported languages](docs/languages.md)
-- [Documentation](#documentation)
-- [eSpeak Compatibility](#espeak-compatibility)
-- [History](#history)
-- [License Information](#license-information)
-----------
+This repo is a fork of [espeak-ng](https://github.com/espeak-ng/espeak-ng). The speech generation and other parts unnecessary for generating IPA were removed to make it easier to understand what the code is actually doing. Utility and glue code for inter-operating with JS and improved source-phoneme mapping were added.
 
-The eSpeak NG is a compact open source software text-to-speech synthesizer for 
-Linux, Windows, Android and other operating systems. It supports 
-[more than 100 languages and accents](docs/languages.md). It is based on the eSpeak engine
-created by Jonathan Duddington.
+The JS package is available on [NPM](https://www.npmjs.com/package/ephone) and its [readme](emscripten/README.md) is copied below.
 
-eSpeak NG uses a "formant synthesis" method. This allows many languages to be
-provided in a small size. The speech is clear, and can be used at high speeds,
-but is not as natural or smooth as larger synthesizers which are based on human
-speech recordings. It also supports Klatt formant synthesis, and the ability
-to use MBROLA as backend speech synthesizer.
+## Building
 
-eSpeak NG is available as:
+There are two build scripts located in the [emscripten](emscripten) folder: `build.sh` and `build-multiple.sh`. The scripts are only expected to work on Linux. You will first need to install python, cmake, and the [emscripten skd](https://github.com/emscripten-core/emsdk) (which includes clang and node; which are also required).
 
-*  A [command line](src/espeak-ng.1.ronn) program (Linux and Windows) to speak text from a file or
-   from stdin.
-*  A [shared library](docs/integration.md) version for use by other programs. (On Windows this is
-   a DLL).
-*  A SAPI5 version for Windows, so it can be used with screen-readers and
-   other programs that support the Windows SAPI5 interface.
-*  eSpeak NG has been ported to other platforms, including Solaris and Mac
-   OSX.
+Calling `build-multiple.sh` will call:
 
-## Features
+- `build.sh clean` to wipe the `./build` folder
+- `build.sh native` to build the native program, which is then used to compile specific language files
+- `build.sh preload` to convert those language files to a form usable by the wasm build
+  - The above two are repeated once for each different set of languages being built
+- `build.sh wasm` to use emscripten to build the main program to JS/WASM
+- `build.sh ephone` to use emscripten to build the final JS/WASM package
+  - Build artifacts can be found in `./build/dist`
 
-*  Includes different Voices, whose characteristics can be altered.
-*  Can produce speech output as a WAV file.
-*  SSML (Speech Synthesis Markup Language) is supported (not complete),
-   and also HTML.
-*  Compact size.  The program and its data, including many languages,
-   totals about few Mbytes.
-*  Can be used as a front-end to [MBROLA diphone voices](docs/mbrola.md).
-   eSpeak NG converts text to phonemes with pitch and length information.
-*  Can translate text into phoneme codes, so it could be adapted as a
-   front end for another speech synthesis engine.
-*  Potential for other languages. Several are included in varying stages
-   of progress. Help from native speakers for these or other languages is
-   welcome.
-*  Written in C.
+If you want to build a custom language pack, it should be pretty straightforward to figure it out by looking at [build-multiple](emscripten/build-multiple.sh).
 
-See the [ChangeLog](ChangeLog.md) for a description of the changes in the
-various releases and with the eSpeak NG project.
+##
+# ephone - eSpeak NG phoneme generation
 
-The following platforms are supported:
+This package contains just the phoneme generation from [espeak-ng](https://github.com/espeak-ng/espeak-ng), compiled to wasm via emscripten. The main reason I created this instead of just using the existing phonemizer package, is that this one provides a map between the individual parts of the source text and the output IPA. Or, if you don't need that, it can just generate IPA ([International Phonetic Alphabet](https://wikipedia.org/wiki/International_Phonetic_Alphabet)) too.
 
-| Platform    | Minimum Version | Status |
-|-------------|-----------------|--------|
-| Linux       |                 | ![CI](https://github.com/espeak-ng/espeak-ng/actions/workflows/ci.yml/badge.svg) |
-| BSD         |                 |        |
-| Android     | 4.0             |        |
-| Windows     | Windows 8       |        |
-| Mac         |                 |        |
+Other features include multi-language support and a much smaller package size (depending on which languages you select). If using only the default en-US, it gzips down to 375KB. See [languages](#languages) for more.
 
-## Documentation
+## Usage examples
 
-1. [User guide](docs/guide.md) explains how to set up and use eSpeak NG from command line or as a library.
-2. [Building guide](docs/building.md) provides info how to compile and build eSpeak NG from the source.
-4. [Index](docs/index.md) provides full list of more detailed information for contributors and developers.
-5. Look at [contribution guide](docs/contributing.md) to start your contribution.
-6. Look at [eSpeak NG roadmap](https://github.com/espeak-ng/espeak-ng/wiki/eSpeak-NG-roadmap) to participate in development of eSpeak NG.
+### Simple English:
 
-## eSpeak Compatibility
+```javascript
+import createEphone from 'ephone';
+const ephone = await createEphone();
+ephone.textToIpa('Hello!');
 
-The *espeak-ng* binaries use the same command-line options as *espeak*, with
-several additions to provide new functionality from *espeak-ng* such as specifying
-the output audio device name to use. The build creates symlinks of `espeak` to
-`espeak-ng`, and `speak` to `speak-ng`.
+> "həlˈoʊ!"
+```
 
-The espeak `speak_lib.h` include file is located in `espeak-ng/speak_lib.h` with
-an optional symlink in `espeak/speak_lib.h`. This file contains the espeak 1.48.15
-API, with a change to the `ESPEAK_API` macro to fix building on Windows
-and some minor changes to the documentation comments. This C API is API and ABI
-compatible with espeak.
+### English with source map:
 
-The `espeak-data` data has been moved to `espeak-ng-data` to avoid conflicts with
-espeak. There have been various changes to the voice, dictionary and phoneme files
-that make them incompatible with espeak.
+```javascript
+import createEphone from 'ephone';
 
-The *espeak-ng* project does not include the *espeakedit* program. It has moved
-the logic to build the dictionary, phoneme and intonation binary files into the
-`libespeak-ng.so` file that is accessible from the `espeak-ng` command line and
-C API.
+document.getElementById('app').innerHTML = `<div>
+    <div>Source: <span id="source-text" /></div>
+    <div>Result: <span id="result-ipa" /></div>
+    <div id="source-spans" />
+    <div id="ipa-spans" />
+  </div>`;
 
-## Related projects
+const appendColorSpan = (text, color, id) => {
+  const span = document.createElement('span');
+  span.textContent = text;
+  span.style.backgroundColor = color;
+  document.getElementById(id).append(span);
+};
 
-* **[espeak-ng-sapi](https://github.com/gozaltech/espeak-ng-sapi)** –  
-  A third-party Windows SAPI 5 engine implementation for eSpeak NG.
+const ephone = await createEphone();
+const result = ephone.textToIpaWithSourceMap("Hello! Why don't you have a seat over there?");
 
-## History
+document.getElementById('source-text').textContent = result.text;
+document.getElementById('result-ipa').textContent = result.ipa;
 
-The program was originally known as __speak__ and originally written
-for Acorn/RISC\_OS computers starting in 1995 by Jonathan Duddington. This was
-enhanced and re-written in 2007 as __eSpeak__, including a relaxation of the
-original memory and processing power constraints, and with support for additional
-languages.
+for (const [source, ipa] of result.asSpans()) {
+  const color = colors.shift();
+  appendColorSpan(source, color, 'source-spans');
+  appendColorSpan(ipa, color, 'ipa-spans');
+}
+```
 
-In 2010, Reece H. Dunn started maintaining a version of eSpeak on GitHub that
-was designed to make it easier to build eSpeak on POSIX systems, porting the
-build system to autotools in 2012. In late 2015, this project was officially
-forked to a new __eSpeak NG__ project. The new eSpeak NG project is a significant
-departure from the eSpeak project, with the intention of cleaning up the
-existing codebase, adding new features, and adding to and improving the
-supported languages.
+<!-- ![English Sample](screenshots/en.png) -->
 
-The *historical* branch contains the available older releases of the original
-eSpeak that are not contained in the subversion repository.
+![English Sample](https://github.com/sjmik/ephone-js/raw/HEAD/emscripten/screenshots/en.png)
 
-1.24.02 is the first version of eSpeak to appear in the subversion
-repository, but releases from 1.05 to 1.24 are available at
-[http://sourceforge.net/projects/espeak/files/espeak/](http://sourceforge.net/projects/espeak/files/espeak/).
+### Other languages:
 
-These early releases have been checked into the historical branch,
-with the 1.24.02 release as the last entry. This makes it possible
-to use the replace functionality of git to see the earlier history:
+By default, only the data necessary for American English are loaded. To use a different language (or multiple languages), first import its language pack, then use it to initialize the ephone module. This way, any modern javascript bundler should be smart enough to deliver only the files you actually use.
 
-	git replace 8d59235f 63c1c019
+```javascript
+import createEphone, { roa } from 'ephone'; // roa = Romance family
 
-__NOTE:__ The source releases contain the `big_endian`, `espeak-edit`,
-`praat-mod`, `riskos`, `windows_dll` and `windows_sapi` folders. These
-do not appear in the source repository until later releases, so have
-been excluded from the historical commits to align them better with
-the 1.24.02 source commit.
+const ephone = await createEphone(roa);
+ephone.setVoice('es'); // 'es' is the first language in roa, so this doesn't actually change anything
+const result = ephone.textToIpaWithSourceMap('De muchos colores me gustan a mí.');
+```
+
+<!-- ![Spanish Sample](screenshots/es.png) -->
+
+![Spanish Sample](https://github.com/sjmik/ephone-js/raw/HEAD/emscripten/screenshots/es.png)
+
+### Multiple languages and caveats:
+
+It's a similar story for loading multiple languages. Notice that some languages may be less functional than others. For example, the Japanese "私" produces "tʃˈaɪniːzlˈe̞tə", or... 🤦‍♂️ "chinese letter". Also, spaces are needed between the Japanese words to produce a proper mapping. And in the Chinese example, the tones are indicated by number. It may be possible to change this, I have not looked into it deeply.
+
+```javascript
+import createEphone, { jpx, sit } from 'ephone'; // sit = Sino-Tibetan family
+
+const ephone = await createEphone([jpx, sit]);
+
+ephone.setVoice('ja');
+result = ephone.textToIpaWithSourceMap('これ は 私 の ペン です。');
+
+ephone.setVoice('cmn');
+result = ephone.textToIpaWithSourceMap('石室詩士史氏嗜豕');
+```
+
+<!-- ![Japanese Sample](screenshots/ja.png) ![Chinese Sample](screenshots/cmn.png) -->
+
+![Japanese Sample](https://github.com/sjmik/ephone-js/raw/HEAD/emscripten/screenshots/ja.png) ![Chinese Sample](https://github.com/sjmik/ephone-js/raw/HEAD/emscripten/screenshots/cmn.png)
+
+### Listing voices:
+
+```javascript
+import createEphone, { en_all, roa, gmw } from 'ephone';
+const ephone = await createEphone([en_all, roa, gmw]);
+ephone.getVoices()
+
+> [
+    { name: "en",     desc: "English (Great Britain)" },
+    { name: "en-US",  desc: "English (America)" },
+    { name: "es",     desc: "Spanish (Spain)" },
+    { name: "es-419", desc: "Spanish (Latin America)" },
+    { name: "fr",     desc: "French (France)" },
+    ...
+  ]
+```
+
+## Languages
+
+I built this with a handful of language packs. The packs are implemented as ES6 modules, so as mentioned above, javascript bundlers should be capable of recognizing which are used in your code and only ship the needed files. Here's a list of what is available:
+
+| Module   | Name             | Description                          |
+| -------- | ---------------- | ------------------------------------ |
+| `en_us`  | `en-US`          | English (America)                    |
+| `en_all` | `en`             | English (Great Britain)              |
+|          | `en-029`         | English (Caribbean)                  |
+|          | `en-GB-scotland` | English (Scotland)                   |
+|          | `en-GB-x-gbclan` | English (Lancaster)                  |
+|          | `en-GB-x-gbcwmd` | English (West Midlands)              |
+|          | `en-GB-x-rp`     | English (Received Pronunciation)     |
+|          | `en-US`          | English (America)                    |
+| `roa`    | `es`             | Spanish (Spain)                      |
+|          | `es-419`         | Spanish (Latin America)              |
+|          | `fr`             | French (France)                      |
+|          | `it`             | Italian                              |
+|          | `pt`             | Portuguese (Portugal)                |
+|          | `pt-BR`          | Portuguese (Brazil)                  |
+| `gmw`    | `de`             | German                               |
+|          | `nl`             | Dutch                                |
+| `sit`    | `cmn`            | Chinese (Mandarin, latin as English) |
+|          | `yue`            | Chinese (Cantonese)                  |
+| `jpx`    | `ja`             | Japanese                             |
+| `zlx`    | `ru`             | Russian                              |
+|          | `uk`             | Ukrainian                            |
+|          | `pl`             | Polish                               |
+
+There's also one more module: `all`, which contains every language from eSpeak NG. Check out the full list at the [parent project](https://github.com/espeak-ng/espeak-ng/blob/HEAD/docs/languages.md). This is a pretty large file at 18MB, or 14MB gzipped. The size may not be a problem for some projects, but if you just need one or two specific languages, it's not too hard to build your own. Check out the build scripts on github.
 
 ## License Information
 
-eSpeak NG Text-to-Speech is released under the [GPL version 3](COPYING) or
-later license.
-
-The `getopt.c` compatibility implementation for getopt support on Windows is
-taken from the NetBSD `getopt_long` implementation, which is licensed under a
-[2-clause BSD](COPYING.BSD2) license.
-
-Android is a trademark of Google LLC.
-
-## Acknowledgements
-
-The catalan extension was funded by [Departament de la Vicepresidència i de Polítiques Digitals i Territori de la Generalitat de Catalunya](https://politiquesdigitals.gencat.cat/ca/inici/index.html#googtrans(ca|en) 
-within the framework of 
-[Projecte AINA](https://politiquesdigitals.gencat.cat/ca/economia/catalonia-ai/aina).
+[GPL version 3](https://github.com/sjmik/ephone-js/blob/HEAD/COPYING) is inherited from [eSpeak NG Text-to-Speech](https://github.com/espeak-ng/espeak-ng).
+Complete change history is available via github.

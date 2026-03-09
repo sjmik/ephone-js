@@ -91,10 +91,6 @@ static const char *help_text =
     "\t   Compile pronunciation rules and dictionary from the current\n"
     "\t   directory, including line numbers for use with -X.\n"
     "\t   <voice name> specifies the language\n"
-#if USE_MBROLA
-    "--compile-mbrola=<voice name>\n"
-    "\t   Compile an MBROLA voice\n"
-#endif
     "--compile-intonations\n"
     "\t   Compile the intonation data\n"
     "--compile-phonemes=<phsource-dir>\n"
@@ -131,7 +127,6 @@ unsigned int samples_split = 0;
 unsigned int samples_split_seconds = 0;
 unsigned int wavefile_count = 0;
 
-FILE *f_wavfile = NULL;
 char filetype[5];
 char wavefile[200];
 
@@ -206,100 +201,6 @@ static void Write4Bytes(FILE *f, int value)
 	}
 }
 
-static int OpenWavFile(char *path, int rate)
-{
-	static const unsigned char wave_hdr[44] = {
-		'R', 'I', 'F', 'F', 0x24, 0xf0, 0xff, 0x7f, 'W', 'A', 'V', 'E', 'f', 'm', 't', ' ',
-		0x10, 0, 0, 0, 1, 0, 1, 0,  9, 0x3d, 0, 0, 0x12, 0x7a, 0, 0,
-		2, 0, 0x10, 0, 'd', 'a', 't', 'a',  0x00, 0xf0, 0xff, 0x7f
-	};
-
-	if (path == NULL)
-		return 2;
-
-	while (isspace(*path)) path++;
-
-	f_wavfile = NULL;
-	if (path[0] != 0) {
-		if (strcmp(path, "stdout") == 0) {
-#ifdef _WIN32
-			// prevent Windows adding 0x0d before 0x0a bytes
-			_setmode(_fileno(stdout), _O_BINARY);
-#endif
-			f_wavfile = stdout;
-		} else
-			f_wavfile = fopen(path, "wb");
-	}
-
-	if (f_wavfile == NULL) {
-		fprintf(stderr, "Can't write to: '%s'\n", path);
-		return 1;
-	}
-
-	fwrite(wave_hdr, 1, 24, f_wavfile);
-	Write4Bytes(f_wavfile, rate);
-	Write4Bytes(f_wavfile, rate * 2);
-	fwrite(&wave_hdr[32], 1, 12, f_wavfile);
-	return 0;
-}
-
-static void CloseWavFile()
-{
-	unsigned int pos;
-
-	if ((f_wavfile == NULL) || (f_wavfile == stdout))
-		return;
-
-	fflush(f_wavfile);
-	pos = ftell(f_wavfile);
-
-	if (fseek(f_wavfile, 4, SEEK_SET) != -1)
-		Write4Bytes(f_wavfile, pos - 8);
-
-	if (fseek(f_wavfile, 40, SEEK_SET) != -1)
-		Write4Bytes(f_wavfile, pos - 44);
-
-	fclose(f_wavfile);
-	f_wavfile = NULL;
-}
-
-static int SynthCallback(short *wav, int numsamples, espeak_EVENT *events)
-{
-	char fname[210];
-
-	if (quiet || wav == NULL) return 0;
-
-	while (events->type != 0) {
-		if (events->type == espeakEVENT_SAMPLERATE) {
-			samplerate = events->id.number;
-			samples_split = samples_split_seconds * samplerate;
-		} else if (events->type == espeakEVENT_SENTENCE) {
-			// start a new WAV file when the limit is reached, at this sentence boundary
-			if ((samples_split > 0) && (samples_total > samples_split)) {
-				CloseWavFile();
-				samples_total = 0;
-				wavefile_count++;
-			}
-		}
-		events++;
-	}
-
-	if (f_wavfile == NULL) {
-		if (samples_split > 0) {
-			sprintf(fname, "%s_%.2d%s", wavefile, wavefile_count+1, filetype);
-			if (OpenWavFile(fname, samplerate) != 0)
-				return 1;
-		} else if (OpenWavFile(wavefile, samplerate) != 0)
-			return 1;
-	}
-
-	if (numsamples > 0) {
-		samples_total += numsamples;
-		fwrite(wav, numsamples*2, 1, f_wavfile);
-	}
-	return 0;
-}
-
 static void PrintVersion()
 {
 	const char *version;
@@ -307,6 +208,17 @@ static void PrintVersion()
 	espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, 0, NULL, espeakINITIALIZE_DONT_EXIT);
 	version = espeak_Info(&path_data);
 	printf("eSpeak NG text-to-speech: %s  Data at: %s\n", version, path_data);
+}
+
+static void LobotomizedIpa(int phoneme_options, const char* p_text) {
+	if (phoneme_options & espeakPHONEMES_IPA) {
+		const char* textPtr = p_text;
+		char* ipa = espeak_TextToIpaWithSourceMap(&textPtr, NULL, 0);
+		if (ipa) {
+			printf("%s\n",ipa);
+			free(ipa);
+		}
+	}
 }
 
 int main(int argc, char **argv)
@@ -327,9 +239,6 @@ int main(int argc, char **argv)
 		{ "version", no_argument,       0, 0x10b },
 		{ "sep",     optional_argument, 0, 0x10c },
 		{ "tie",     optional_argument, 0, 0x10d },
-#if USE_MBROLA
-		{ "compile-mbrola", optional_argument, 0, 0x10e },
-#endif
 		{ "compile-intonations", no_argument, 0, 0x10f },
 		{ "compile-phonemes", optional_argument, 0, 0x110 },
 		{ "load",    no_argument,       0, 0x111 },
@@ -544,20 +453,6 @@ int main(int argc, char **argv)
 			if (phonemes_separator == 'z')
 				phonemes_separator = 0x200d; // ZWJ
 			break;
-#if USE_MBROLA
-		case 0x10e: // --compile-mbrola
-		{
-			espeak_ng_InitializePath(data_path);
-			espeak_ng_ERROR_CONTEXT context = NULL;
-			espeak_ng_STATUS result = espeak_ng_CompileMbrolaVoice(optarg2, stdout, &context);
-			if (result != ENS_OK) {
-				espeak_ng_PrintStatusCodeMessage(result, stderr, context);
-				espeak_ng_ClearErrorContext(&context);
-				return EXIT_FAILURE;
-			}
-			return EXIT_SUCCESS;
-		}
-#endif
 		case 0x10f: // --compile-intonations
 		{
 			espeak_ng_InitializePath(data_path);
@@ -618,7 +513,6 @@ int main(int argc, char **argv)
 		samplerate = espeak_ng_GetSampleRate();
 		samples_split = samplerate * samples_split_seconds;
 
-		espeak_SetSynthCallback(SynthCallback);
 		if (samples_split) {
 			char *extn;
 			extn = strrchr(wavefile, '.');
@@ -721,7 +615,7 @@ int main(int argc, char **argv)
 	if (p_text != NULL) {
 		int size;
 		size = strlen(p_text);
-		espeak_Synth(p_text, size+1, 0, POS_CHARACTER, 0, synth_flags, NULL, NULL);
+		LobotomizedIpa(phoneme_options, p_text);
 	} else if (flag_stdin) {
 		size_t max = 1000;
 		if ((p_text = (char *)malloc(max)) == NULL) {
@@ -733,7 +627,7 @@ int main(int argc, char **argv)
 			// line by line input on stdin or from FIFO
 			while (fgets(p_text, max, f_text) != NULL) {
 				p_text[max-1] = 0;
-				espeak_Synth(p_text, max, 0, POS_CHARACTER, 0, synth_flags, NULL, NULL);
+				LobotomizedIpa(phoneme_options, p_text);
 				// Allow subprocesses to use the audio data through pipes.
 				fflush(stdout);
 			}
@@ -763,7 +657,7 @@ int main(int argc, char **argv)
 			}
 			if (ix > 0) {
 				p_text[ix] = 0;
-				espeak_Synth(p_text, ix, 0, POS_CHARACTER, 0, synth_flags, NULL, NULL);
+				LobotomizedIpa(phoneme_options, p_text);
 			}
 		}
 
@@ -776,7 +670,7 @@ int main(int argc, char **argv)
 
 		fread(p_text, 1, filesize, f_text);
 		p_text[filesize] = 0;
-		espeak_Synth(p_text, filesize+1, 0, POS_CHARACTER, 0, synth_flags, NULL, NULL);
+		LobotomizedIpa(phoneme_options, p_text);
 		fclose(f_text);
 
 		free(p_text);
@@ -791,7 +685,6 @@ int main(int argc, char **argv)
 	if (f_phonemes_out != stdout)
 		fclose(f_phonemes_out);
 
-	CloseWavFile();
 	espeak_ng_Terminate();
 	return 0;
 }

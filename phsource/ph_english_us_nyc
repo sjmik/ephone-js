@@ -340,10 +340,6 @@ phoneme i@3
   vwl  starttype #i  endtype #@
   length 250
 
-  IF MbrolaSynth THEN
-    ChangePhoneme(i@)
-  ENDIF
-
   IfNextVowelAppend(r-)
   FMT(vdiph2/ii@)
 endphoneme
@@ -426,13 +422,6 @@ phoneme t#    // reduced [t] as in "city"
 
   IF nextPh(isNotVowel) THEN
     ChangePhoneme(t)
-  ENDIF
-
-  IF KlattSynth THEN
-    IF PreVoicing THEN
-      FMT(klatt/x_tap)
-    ENDIF
-    FMT(klatt/tap2) addWav(x/d, 70)
   ENDIF
 
   IF PreVoicing THEN

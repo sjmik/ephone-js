@@ -455,10 +455,13 @@ char *WritePhMnemonic(char *phon_out, PHONEME_TAB *ph, PHONEME_LIST *plist, int 
 	}
 
 	if (ph->code == phonSWITCH) {
-		// the tone_ph field contains a phoneme table number
-		p = phoneme_tab_list[plist->tone_ph].name;
-		sprintf(phon_out, "(%s)", p);
-		return phon_out + strlen(phon_out);
+		// Ignore language switches; ex: "(en)...(ja)...(en)..."
+		phon_out[0] = 0;
+		return phon_out;
+		// // the tone_ph field contains a phoneme table number
+		// p = phoneme_tab_list[plist->tone_ph].name;
+		// sprintf(phon_out, "(%s)", p);
+		// return phon_out + strlen(phon_out);
 	}
 
 	if (use_ipa) {
@@ -557,18 +560,28 @@ char *WritePhMnemonicWithStress(char *phon_out, PHONEME_TAB *ph, PHONEME_LIST *p
 }
 ////
 
-const char *GetTranslatedPhonemeString(int phoneme_mode)
-{
-	/* Called after a clause has been translated into phonemes, in order
-	   to display the clause in phoneme mnemonic form.
+static int utf8_count(const char* str) {
+    int count = 0;
+    while (*str) {
+        if ((*str & 0xC0) != 0x80) count++;  // Not a continuation byte
+        str++;
+    }
+    return count;
+}
 
-	   phoneme_mode
-	                 bit  1:   use IPA phoneme names
-	                 bit  7:   use tie between letters in multi-character phoneme names
-	                 bits 8-23 tie or separator character
+/*	Called after a clause has been translated into phonemes, in order
+	to display the clause in phoneme mnemonic form.
 
-	 */
+	phoneme_mode
+		bit  2:   use IPA phoneme names
+		bit  7:   use tie between letters in multi-character phoneme names
+		bits 8-23 tie or separator character
 
+	source_map: if not NULL, will contain the correlation from source to phoneme.
+		In the form of: [ source_pos1, phoneme_pos1, source_pos2, phoneme_pos2, ... , -1 ]
+		Granularity is at MOST the word-level.
+*/
+const char *GetTranslatedPhonemeString(int phoneme_mode, short* source_map) {
 	int ix;
 	unsigned int len;
 	int phon_out_ix = 0;
@@ -584,6 +597,8 @@ const char *GetTranslatedPhonemeString(int phoneme_mode)
 	char phon_buf[30];
 	char phon_buf2[30];
 	PHONEME_LIST *plist;
+	short utf8_out_len = 0;
+	short source_map_index = 0;
 
 	static const char stress_chars[] = "==,,''";
 
@@ -591,6 +606,7 @@ const char *GetTranslatedPhonemeString(int phoneme_mode)
 		phon_out_size = N_PHON_OUT;
 		if ((phon_out_buf = (char *)malloc(phon_out_size)) == NULL) {
 			phon_out_size = 0;
+			if (source_map) source_map[0] = -1;
 			return "";
 		}
 	}
@@ -609,11 +625,28 @@ const char *GetTranslatedPhonemeString(int phoneme_mode)
 
 		plist = &phoneme_list[ix];
 
+		short extra_space = 0;
 		WritePhMnemonic(phon_buf2, plist->ph, plist, use_ipa, &flags);
-		if (plist->newword & PHLIST_START_OF_WORD && !(plist->newword & (PHLIST_START_OF_SENTENCE | PHLIST_START_OF_CLAUSE)))
+		if (plist->newword & PHLIST_START_OF_WORD && !(plist->newword & (PHLIST_START_OF_SENTENCE | PHLIST_START_OF_CLAUSE))) {
 			*buf++ = ' ';
+			extra_space = 1;
+		}
 
-		if ((!plist->newword) || (separate_phonemes == ' ')) {
+        if (source_map) {
+            short source_position = plist->sourceix & 0x7ff;
+			// plist->sourceix starts counting from 1, let's just make sure.
+            if (source_position > 0) {
+				short source_index = source_position - 1;
+				// Sometimes one source word will result in many output mnemonics.
+				// For example, acronyms/initialisms or foreign characters.
+				if (source_map_index < 2 || source_map[source_map_index-2] != source_index) {
+                	source_map[source_map_index++] = source_index;
+                	source_map[source_map_index++] = utf8_out_len + extra_space;
+				}
+            }
+        }
+
+        if ((!plist->newword) || (separate_phonemes == ' ')) {
 			if ((separate_phonemes != 0) && (ix > 1)) {
 				utf8_in(&c, phon_buf2);
 				if ((c < 0x2b0) || (c > 0x36f)) // not if the phoneme starts with a superscript letter
@@ -669,20 +702,25 @@ const char *GetTranslatedPhonemeString(int phoneme_mode)
 			char *new_phon_out_buf = (char *)realloc(phon_out_buf, phon_out_size);
 			if (new_phon_out_buf == NULL) {
 				phon_out_size = 0;
+				if (source_map) source_map[0] = -1;
 				return "";
 			} else
 				phon_out_buf = new_phon_out_buf;
 		}
 
 		phon_buf[len] = 0;
+		utf8_out_len += utf8_count(phon_buf);
 		strcpy(&phon_out_buf[phon_out_ix], phon_buf);
 		phon_out_ix += len;
 	}
 
-	if (!phon_out_buf)
+	if (!phon_out_buf) {
+		if (source_map) source_map[0] = -1;
 		return "";
+	}
 
 	phon_out_buf[phon_out_ix] = 0;
+	if (source_map) source_map[source_map_index] = -1;
 
 	return phon_out_buf;
 }

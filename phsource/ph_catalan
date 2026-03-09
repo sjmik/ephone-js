@@ -169,14 +169,6 @@ phoneme m
   Vowelout f1=2  f2=1000 -500 -350  f3=-200 80 brk
   lengthmod 4
 
-  IF KlattSynth THEN
-    Vowelin  f1=0  f2=1000 -50 -200  f3=-200 80
-    IF nextPh(isPause2) THEN
-      FMT(klatt/m_)
-    ENDIF
-    FMT(klatt/m)
-  ENDIF
-
   NextVowelStarts
     VowelStart(m/m@)
     VowelStart(m/ma)
@@ -204,11 +196,6 @@ phoneme n
   vcd alv nas
   Vowelout f1=2 f2=1500 -300 250  f3=-100 80  rms=20 brk
   lengthmod 4
-
-  IF KlattSynth THEN
-    Vowelin f1=0 f2=1500 -200 200 f3=0 80
-    FMT(klatt/n)
-  ENDIF
 
   NextVowelStarts
     VowelStart(n/n@)
@@ -281,10 +268,6 @@ phoneme z
     ELSE
       ChangePhoneme(Z)
     ENDIF
-  ENDIF
-  IF KlattSynth THEN
-    Vowelin f1=0 f2=1390 -300 300 f3=0 0
-    Vowelout f1=1  f2=1390 -300 300  f3=-100 60  len=50 brk
   ENDIF
 
   IF nextPh(isPause2) THEN

@@ -207,14 +207,6 @@ phoneme m // copied from standard m phoneme with rule for 'mm'
   Vowelout f1=2  f2=1000 -500 -350  f3=-200 80 brk
   lengthmod 4
 
-  IF KlattSynth THEN
-    Vowelin  f1=0  f2=1000 -50 -200  f3=-200 80
-    IF nextPh(isPause2) THEN
-      FMT(klatt/m_)
-    ENDIF
-    FMT(klatt/m)
-  ENDIF
-
   NextVowelStarts
     VowelStart(m/m@)
     VowelStart(m/ma)

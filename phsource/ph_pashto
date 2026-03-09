@@ -444,13 +444,6 @@ phoneme m
   ipa m
   Vowelin  f1=0  f2=1000 -50 -200  f3=-200 80  // Moved Vowelin before Vowelout for consistency
   Vowelout f1=2  f2=1000 -500 -350  f3=-200 80 brk
-  
-  IF KlattSynth THEN
-    IF nextPh(isPause2) THEN
-      FMT(klatt/m_)
-    ENDIF
-    FMT(klatt/m)
-  ENDIF
 
   NextVowelStarts
     VowelStart(m/m@)
@@ -477,10 +470,6 @@ phoneme n
   Vowelin f1=0 f2=1500 -200 200 f3=0 80  // Moved Vowelin before Vowelout for consistency
   Vowelout f1=2 f2=1500 -300 250  f3=-100 80  rms=20 brk
 
-  IF KlattSynth THEN
-    FMT(klatt/n)
-  ENDIF
-
   NextVowelStarts
     VowelStart(n/n@)
     VowelStart(n/na)
@@ -505,13 +494,6 @@ phoneme N
   ipa ŋ
   Vowelin f1=0 f2=2100 50 300 f3=0 80  // Moved Vowelin before Vowelout for consistency
   Vowelout f1=3 f2=2300 300 400  f3=-200 80  len=40 rms=20 brk
-
-  IF KlattSynth THEN
-    IF nextPh(isPause2) THEN
-      FMT(klatt/nn_)
-    ENDIF
-    FMT(klatt/nn)
-  ENDIF
 
   NextVowelStarts
     VowelStart(nn/nn@)

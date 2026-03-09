@@ -29,11 +29,7 @@
 #include <string.h>
 #include <strings.h>
 
-#if defined(_WIN32) || defined(_WIN64)
-#include <windows.h>
-#else
 #include <dirent.h>
-#endif
 
 #include <espeak-ng/espeak_ng.h>
 #include <espeak-ng/speak_lib.h>
@@ -46,7 +42,6 @@
 #include "mnemonics.h"               // for LookupMnemName, MNEM_TAB
 #include "phoneme.h"                  // for REPLACE_PHONEMES, n_replace_pho...
 #include "speech.h"                   // for PATHSEP
-#include "mbrola.h"                   // for LoadMbrolaTable
 #include "synthdata.h"                // for SelectPhonemeTableName, LookupP...
 #include "synthesize.h"               // for SetSpeed, SPEED_FACTORS, speed
 #include "translate.h"                // for LANGUAGE_OPTIONS, DeleteTranslator
@@ -278,7 +273,6 @@ void VoiceReset(int tone_only)
 	voice->consonant_amp = 90; // change from 100 to 90 for v.1.47
 	voice->consonant_ampv = 100;
 	voice->samplerate = samplerate;
-	memset(voice->klattv, 0, sizeof(voice->klattv));
 
 	speed.fast_settings = espeakRATE_MAXIMUM;
 
@@ -311,9 +305,6 @@ void VoiceReset(int tone_only)
 
 	if (tone_only == 0) {
 		n_replace_phonemes = 0;
-#if USE_MBROLA
-		LoadMbrolaTable(NULL, NULL, 0);
-#endif
 	}
 
 // probably unnecessary, but removing this would break tests
@@ -430,10 +421,6 @@ voice_t *LoadVoice(const char *vname, int control)
 	char phonemes_name[40] = "";
 	const char *language_type;
 	char buf[sizeof(path_home)+30];
-#if USE_MBROLA
-	char name1[40];
-	char name2[80];
-#endif
 
 	int pitch1;
 	int pitch2;
@@ -599,10 +586,6 @@ voice_t *LoadVoice(const char *vname, int control)
                 }
                 break;
 
-
-
-
-
             case V_REPLACE:
                 if (phonemes_set == false) {
                     // must set up a phoneme table before we can lookup phoneme mnemonics
@@ -663,39 +646,6 @@ voice_t *LoadVoice(const char *vname, int control)
                 sscanf(p, "%d", &voice->speed_percent);
                 SetSpeed(3);
                 break;
-#if USE_MBROLA
-            case V_MBROLA:
-            {
-                int srate = 16000;
-
-                name2[0] = 0;
-                sscanf(p, "%s %s %d", name1, name2, &srate);
-                espeak_ng_STATUS status = LoadMbrolaTable(name1, name2, &srate);
-                if (status != ENS_OK) {
-                    espeak_ng_PrintStatusCodeMessage(status, stderr, NULL);
-                    fclose(f_voice);
-                    return NULL;
-                }
-                else
-                    voice->samplerate = srate;
-            }
-                break;
-#else
-            case V_MBROLA:
-                fprintf(stderr, "espeak-ng was built without mbrola support\n");
-                break;
-#endif
-#if USE_KLATT
-            case V_KLATT:
-                voice->klattv[0] = 1; // default source: IMPULSIVE
-                Read8Numbers(p, voice->klattv);
-                voice->klattv[KLATT_Kopen] -= 40;
-                break;
-#else
-            case V_KLATT:
-                fprintf(stderr, "espeak-ng was built without klatt support\n");
-                break;
-#endif
             case V_FAST:
                 sscanf(p, "%d", &speed.fast_settings);
                 SetSpeed(3);
@@ -952,9 +902,8 @@ static int ScoreVoice(espeak_VOICE *voice_spec, const char *spec_language, int s
 	return score;
 }
 
-static int SetVoiceScores(espeak_VOICE *voice_select, espeak_VOICE **voices, int control)
+static int SetVoiceScores(espeak_VOICE *voice_select, espeak_VOICE **voices)
 {
-	// control: bit0=1  include mbrola voices
 	int ix;
 	int score;
 	int nv; // number of candidates
@@ -973,12 +922,7 @@ static int SetVoiceScores(espeak_VOICE *voice_select, espeak_VOICE **voices, int
 		}
 	}
 
-	if ((n_parts == 1) && (control & 1)) {
-		if (strcmp(language, "mbrola") == 0) {
-			language[2] = 0; // truncate to "mb"
-			lang_len = 2;
-		}
-
+	if (n_parts == 1) {
 		char buf[sizeof(path_home)+80];
 		sprintf(buf, "%s/voices/%s", path_home, language);
 		if (GetFileLength(buf) == -EISDIR) {
@@ -993,9 +937,6 @@ static int SetVoiceScores(espeak_VOICE *voice_select, espeak_VOICE **voices, int
 	nv = 0;
 	for (ix = 0; ix < n_voices_list; ix++) {
 		vp = voices_list[ix];
-
-		if (((control & 1) == 0) && (memcmp(vp->identifier, "mb/", 3) == 0))
-			continue;
 
 		if (voice_select->languages == NULL || memcmp(voice_select->languages,"all", 3) == 0) {
 			voices[nv++] = vp;
@@ -1124,8 +1065,7 @@ char const *SelectVoice(espeak_VOICE *voice_select, int *found)
 	}
 
 	// select and sort voices for the required language
-	nv = SetVoiceScores(&voice_select2, voices,
-			voice_select2.identifier && strncmp(voice_select2.identifier, "mb/", 3) == 0 ? 1 : 0);
+	nv = SetVoiceScores(&voice_select2, voices);
 
 	if (nv == 0) {
 		// no matching voice, choose the default
@@ -1401,7 +1341,7 @@ ESPEAK_API const espeak_VOICE **espeak_ListVoices(espeak_VOICE *voice_spec)
 
 	if (voice_spec) {
 		// select the voices which match the voice_spec, and sort them by preference
-		SetVoiceScores(voice_spec, voices, 1);
+		SetVoiceScores(voice_spec, voices);
 	} else {
 		// list all: omit variant and mbrola voices
 		int ix;

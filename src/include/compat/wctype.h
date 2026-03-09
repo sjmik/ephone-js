@@ -25,10 +25,6 @@
 #else
 #include <../include/wctype.h>
 #endif
-#else
-#pragma GCC system_header // Silence "warning: #include_next is a GCC extension"
-#include_next <wctype.h>
-#endif
 
 #include <ucd/ucd.h>
 
@@ -45,4 +41,10 @@
 #define iswupper  ucd_isupper
 #define iswxdigit ucd_isxdigit
 
+#else
+#pragma GCC system_header // Silence "warning: #include_next is a GCC extension"
+#include_next <wctype.h>
 #endif
+
+#endif
+ 

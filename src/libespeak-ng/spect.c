@@ -120,10 +120,6 @@ static SpectFrame *SpectFrameCreate(void)
 		frame->peaks[ix].klt_bp = default_klt_bw[ix];
 	}
 
-	memset(frame->klatt_param, 0, sizeof(frame->klatt_param));
-	frame->klatt_param[KLATT_AV] = 59;
-	frame->klatt_param[KLATT_Kopen] = 40;
-
 	return frame;
 }
 
@@ -183,11 +179,7 @@ static espeak_ng_STATUS LoadFrame(SpectFrame *frame, FILE *stream, int file_form
 	}
 
 	if (file_format_type > 0) {
-		for (ix = 0; ix < N_KLATTP2; ix++)
-		{
-			fread(frame->klatt_param + ix, sizeof(short), 1, stream);
-			frame->klatt_param[ix] = le16toh(frame->klatt_param[ix]);
-		}
+    	fseek(stream, 14/*N_KLATTP2*/ * sizeof(short), SEEK_CUR); // Skip klapp
 	}
 
 	spect_data = malloc(sizeof(unsigned short) * frame->nx);

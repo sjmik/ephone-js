@@ -79,8 +79,6 @@ typedef struct {
 	int max_y;
 	unsigned short *spect; // sqrt of harmonic amplitudes,  1-nx at 'pitch'
 
-	short klatt_param[N_KLATTP2];
-
 	formant_t formants[N_PEAKS]; // this is just the estimate given by Praat
 	peak_t peaks[N_PEAKS];
 } SpectFrame;

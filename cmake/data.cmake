@@ -1,4 +1,4 @@
-list(APPEND _dict_compile_list
+set(_dict_compile_list
   af am an ar as az
   ba be bg bn bpy bs
   ca chr cmn crh cs cv cy
@@ -24,26 +24,11 @@ list(APPEND _dict_compile_list
   yue
 )
 
-list(APPEND _mbrola_lang_list
-  af1 ar1 ar2
-  ca cmn cr1 cs
-  de2 de4 de6 de8
-  ee1 en1 es es3 es4
-  fr
-  gr1 gr2 grc-de6
-  he hn1 hu1
-  ic1 id1 in ir1 it1 it3
-  jp
-  la1 lt
-  ma1 mx1 mx2
-  nl nz1
-  pl1 pt1 ptbr ptbr4
-  ro1
-  sv sv2
-  tl1 tr1
-  us us3
-  vz
-)
+set(DICT_COMPILE_REGEX "" CACHE STRING "Regex filter for languages to compile (ex: en|es)")
+message(STATUS "Compiling dictionaries matching regex: ${DICT_COMPILE_REGEX}")
+if(NOT DICT_COMPILE_REGEX STREQUAL "")
+  list(FILTER _dict_compile_list INCLUDE REGEX "${DICT_COMPILE_REGEX}")
+endif()
 
 set(DATA_DIST_ROOT ${CMAKE_CURRENT_BINARY_DIR})
 set(DATA_DIST_DIR ${DATA_DIST_ROOT}/espeak-ng-data)
@@ -56,8 +41,24 @@ set(DICT_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dictsource)
 
 file(MAKE_DIRECTORY "${DATA_DIST_DIR}")
 file(MAKE_DIRECTORY "${DICT_TMP_DIR}")
-file(COPY "${DATA_SRC_DIR}/lang" DESTINATION "${DATA_DIST_DIR}")
-file(COPY "${DATA_SRC_DIR}/voices/!v" DESTINATION "${DATA_DIST_DIR}/voices")
+
+set(LANG_COPY_REGEX "" CACHE STRING "Regex filter for language folders/files to copy (ex: gmw/en|roa/es)")
+message(STATUS "Copying languages matching regex: ${LANG_COPY_REGEX}")
+if(LANG_COPY_REGEX STREQUAL "")
+  file(COPY "${DATA_SRC_DIR}/lang" DESTINATION "${DATA_DIST_DIR}")
+else()
+  file(COPY "${DATA_SRC_DIR}/lang" DESTINATION "${DATA_DIST_DIR}" FILES_MATCHING REGEX "${LANG_COPY_REGEX}")
+  file(GLOB_RECURSE _dirs LIST_DIRECTORIES true "${DATA_DIST_DIR}/lang/*")
+  list(SORT _dirs ORDER DESCENDING) # Delete subfolder before parent
+  foreach(_dir IN LISTS _dirs) # Clear out empty folders
+    file(GLOB _content "${_dir}/*")
+    if(IS_DIRECTORY "${_dir}" AND NOT _content)
+      file(REMOVE_RECURSE "${_dir}")
+    endif()
+  endforeach()
+endif()
+
+# file(COPY "${DATA_SRC_DIR}/voices/!v" DESTINATION "${DATA_DIST_DIR}/voices") # Default voice only, no variants
 file(COPY "${PHONEME_SRC_DIR}" DESTINATION "${DATA_DIST_ROOT}")
 
 set(ESPEAK_RUN_ENV ${CMAKE_COMMAND} -E env "ESPEAK_DATA_PATH=${DATA_DIST_ROOT}")
@@ -110,7 +111,6 @@ add_custom_command(
 )
 
 list(APPEND _dict_targets)
-list(APPEND _mbr_targets)
 
 foreach(_dict_name ${_dict_compile_list})
   set(_dict_target "${DATA_DIST_DIR}/${_dict_name}_dict")
@@ -148,27 +148,11 @@ foreach(_dict_name ${_dict_compile_list})
   )
 endforeach()
 
-if (HAVE_MBROLA AND USE_MBROLA)
-  file(COPY "${DATA_SRC_DIR}/voices/mb" DESTINATION "${DATA_DIST_DIR}/voices")
-  file(MAKE_DIRECTORY "${DATA_DIST_DIR}/mbrola_ph")
-  foreach(_mbl ${_mbrola_lang_list})
-    set(_mbl_src "${PHONEME_SRC_DIR}/mbrola/${_mbl}")
-    set(_mbl_out "${DATA_DIST_DIR}/mbrola_ph/${_mbl}_phtrans")
-    list(APPEND _mbr_targets ${_mbl_out})
-    add_custom_command(
-      OUTPUT "${_mbl_out}"
-      COMMAND ${ESPEAK_RUN_CMD} --compile-mbrola="${_mbl_src}"
-      DEPENDS "$<TARGET_FILE:espeak-ng-bin>" "${_mbl_src}"
-    )
-  endforeach(_mbl)
-endif()
-
 add_custom_target(
   data ALL
   DEPENDS
     "${DATA_DIST_DIR}/intonations"
     "${DATA_DIST_DIR}/phondata"
     ${_dict_targets}
-    ${_mbr_targets}
 )
 install(DIRECTORY ${DATA_DIST_DIR} DESTINATION share)

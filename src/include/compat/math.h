@@ -19,16 +19,7 @@
 #ifndef MATH_H_COMPAT_SHIM
 #define MATH_H_COMPAT_SHIM
 
-#ifdef _MSC_VER
-#define _USE_MATH_DEFINES // For M_PI, etc.
-#if _MSC_VER >= 1900 // Visual C++ 14 (Visual Studio 2015) and above...
-#include <../ucrt/math.h>
-#else
-#include <../include/math.h>
-#endif
-#else
-#pragma GCC system_header // Silence "warning: #include_next is a GCC extension"
+#pragma GCC system_header  // Silence "warning: #include_next is a GCC extension"
 #include_next <math.h>
-#endif
 
 #endif

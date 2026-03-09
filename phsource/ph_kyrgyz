@@ -268,14 +268,6 @@ phoneme m
   Vowelout f1=2  f2=1000 -500 -350  f3=-200 80 brk
   lengthmod 4
 
-  IF KlattSynth THEN
-    Vowelin  f1=0  f2=1000 -50 -200  f3=-200 80
-    IF nextPh(isPause2) THEN
-      FMT(klatt/m_)
-    ENDIF
-    FMT(klatt/m)
-  ENDIF
-
   NextVowelStarts
     VowelStart(m/m@)
     VowelStart(m/ma)
@@ -301,11 +293,6 @@ phoneme n
   Vowelout f1=2 f2=1500 -300 250  f3=-100 80  rms=20 brk
   lengthmod 4
 
-  IF KlattSynth THEN
-    Vowelin f1=0 f2=1500 -200 200 f3=0 80
-    FMT(klatt/n)
-  ENDIF
-
   NextVowelStarts
     VowelStart(n/n@)
     VowelStart(n/na)
@@ -330,14 +317,6 @@ phoneme N // si**ng**
   vcd vel nas
   Vowelout f1=3 f2=2300 300 400  f3=-200 80  len=40 rms=20 brk
   lengthmod 8            // longer than 'n'
-
-  IF KlattSynth THEN
-    Vowelin f1=0 f2=2100 50 300 f3=0 80
-    IF nextPh(isPause2) THEN
-      FMT(klatt/nn_)
-    ENDIF
-    FMT(klatt/nn)
-  ENDIF
 
   NextVowelStarts
     VowelStart(nn/nn@)
@@ -414,14 +393,6 @@ phoneme b
 
   IF PreVoicing THEN
     FMT(b/xb)
-  ENDIF
-
-  IF KlattSynth THEN
-    Vowelin f1=1  f2=1000 -500 -300  f3=-300 80
-    IF nextPh(isPause2) THEN
-      FMT(klatt/b)  addWav(x/b_)
-    ENDIF
-    FMT(klatt/b) addWav(x/b)
   ENDIF
 
   IF nextPh(isPause2) THEN
@@ -508,10 +479,6 @@ phoneme k
   Vowelin f1=0  f2=2300 200 300  f3=-200 80
   Vowelout f1=0 f2=2300 300 400  f3=-200 80  rms=20
 
-  IF KlattSynth THEN
-    Vowelout f1=0 f2=2300 200 300  f3=-200 80  rms=20
-  ENDIF
-
   IF nextPh(isPause2) THEN
     WAV(ustop/k_)
   ELIF nextPh(r) OR nextPh(R) OR nextPh(R2) THEN
@@ -533,11 +500,6 @@ phoneme z
   voicingswitch s
   lengthmod 6
   Vowelout f1=0  f2=1700 -300 300  f3=-100 60  len=50
-
-  IF KlattSynth THEN
-    Vowelin f1=0 f2=1390 -300 300 f3=0 0
-    Vowelout f1=1  f2=1390 -300 300  f3=-100 60  len=50 brk
-  ENDIF
 
   IF nextPh(isPause2) THEN
     FMT(voc/z_) addWav(ufric/s_, 70)

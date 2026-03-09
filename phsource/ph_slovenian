@@ -115,10 +115,6 @@ phoneme k
   Vowelin f1=0  f2=2300 200 300  f3=-200 80
   Vowelout f1=0 f2=2300 300 400  f3=-200 80  rms=20
 
-  IF KlattSynth THEN
-    Vowelout f1=0 f2=2300 200 300  f3=-200 80  rms=20
-  ENDIF
-
   IF thisPh(isWordEnd) THEN
     WAV(ustop/k)
   ELIF nextPh(isPause2) THEN

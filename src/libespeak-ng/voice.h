@@ -56,7 +56,6 @@ typedef struct {
 	int consonant_amp;     // amplitude of unvoiced consonants
 	int consonant_ampv;    // amplitude of the noise component of voiced consonants
 	int samplerate;
-	int klattv[8];
 
 	// parameters used by Wavegen
 	short freq[N_PEAKS];    // 100% = 256
@@ -119,8 +118,6 @@ typedef enum {
 	V_STRESSOPT,
 	V_NUMBERS,
 
-	V_MBROLA,
-	V_KLATT,
 	V_FAST,
 	V_SPEED,
 	V_DICTMIN,
@@ -174,12 +171,9 @@ static const MNEM_TAB keyword_tab[] = {
 	{ "voicing",      V_VOICING },
 	{ "breath",       V_BREATH },
 	{ "breathw",      V_BREATHW },
-	{ "mbrola",       V_MBROLA },
 	{ "consonants",   V_CONSONANTS },
-	{ "klatt",        V_KLATT },
 	{ "fast_test2",   V_FAST },
 	{ "speed",        V_SPEED },
-
 
 	{ "maintainer",   V_MAINTAINER },
     { "status",       V_STATUS },

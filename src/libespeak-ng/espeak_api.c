@@ -39,8 +39,6 @@ static espeak_ERROR status_to_espeak_error(espeak_ng_STATUS status)
 	case ENS_OK:                     return EE_OK;
 	case ENS_SPEECH_STOPPED:         return EE_OK;
 	case ENS_VOICE_NOT_FOUND:        return EE_NOT_FOUND;
-	case ENS_MBROLA_NOT_FOUND:       return EE_NOT_FOUND;
-	case ENS_MBROLA_VOICE_NOT_FOUND: return EE_NOT_FOUND;
 	case ENS_FIFO_BUFFER_FULL:       return EE_BUFFER_FULL;
 	default:                         return EE_INTERNAL_ERROR;
 	}
@@ -79,35 +77,6 @@ ESPEAK_API int espeak_Initialize(espeak_AUDIO_OUTPUT output_type, int buf_length
 	option_phoneme_events = (options & (espeakINITIALIZE_PHONEME_EVENTS | espeakINITIALIZE_PHONEME_IPA));
 
 	return espeak_ng_GetSampleRate();
-}
-
-ESPEAK_API espeak_ERROR espeak_Synth(const void *text, size_t size,
-                                     unsigned int position,
-                                     espeak_POSITION_TYPE position_type,
-                                     unsigned int end_position, unsigned int flags,
-                                     unsigned int *unique_identifier, void *user_data)
-{
-	return status_to_espeak_error(espeak_ng_Synthesize(text, size, position, position_type, end_position, flags, unique_identifier, user_data));
-}
-
-ESPEAK_API espeak_ERROR espeak_Synth_Mark(const void *text, size_t size,
-                                          const char *index_mark,
-                                          unsigned int end_position,
-                                          unsigned int flags,
-                                          unsigned int *unique_identifier,
-                                          void *user_data)
-{
-	return status_to_espeak_error(espeak_ng_SynthesizeMark(text, size, index_mark, end_position, flags, unique_identifier, user_data));
-}
-
-ESPEAK_API espeak_ERROR espeak_Key(const char *key_name)
-{
-	return status_to_espeak_error(espeak_ng_SpeakKeyName(key_name));
-}
-
-ESPEAK_API espeak_ERROR espeak_Char(wchar_t character)
-{
-	return status_to_espeak_error(espeak_ng_SpeakCharacter(character));
 }
 
 ESPEAK_API espeak_ERROR espeak_SetParameter(espeak_PARAMETER parameter, int value, int relative)

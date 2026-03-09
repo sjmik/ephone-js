@@ -52,15 +52,6 @@ extern "C"
 #define NO_VARIADIC_MACROS
 #endif
 
-#if defined(_WIN32) || defined(_WIN64) // Windows
-
-#define PLATFORM_WINDOWS 1
-#define PATHSEP '\\'
-#define N_PATH_HOME_DEF  230
-#define NO_VARIADIC_MACROS
-
-#else
-
 #define PLATFORM_POSIX 1
 #define PATHSEP  '/'
 #if defined(__linux__) // Linux
@@ -72,8 +63,6 @@ extern "C"
 #define USE_NANOSLEEP
 #define __cdecl
 
-#endif
-
 #ifndef N_PATH_HOME
 #define N_PATH_HOME N_PATH_HOME_DEF
 #endif
@@ -83,9 +72,9 @@ extern "C"
    #define PATH_ESPEAK_DATA ("%cespeak-ng-data", PATHSEP)
 #endif
 
-void cancel_audio(void);
-
 extern char path_home[N_PATH_HOME];    // this is the espeak-ng-data directory
+
+void sync_espeak_SetPunctuationList(const wchar_t *punctlist);
 
 #ifdef __cplusplus
 }

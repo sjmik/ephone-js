@@ -51,23 +51,11 @@ int PeaksToHarmspect(wavegen_peaks_t *peaks,
 		int *htab,
 		int control);
 
-void SetPitch2(voice_t *voice,
-		int pitch1,
-		int pitch2,
-		int *pitch_base,
-		int *pitch_range);
-
 void WavegenInit(int rate,
 		int wavemult_fact);
 
-void WavegenFini(void);
-
-
-int WavegenFill(void);
 void WavegenSetVoice(voice_t *v);
-int WcmdqFree(void);
-void WcmdqStop(void);
-int WcmdqUsed(void);
+
 void WcmdqInc(void);
 
 #ifdef __cplusplus

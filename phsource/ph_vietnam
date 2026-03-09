@@ -945,11 +945,6 @@ phoneme n^ // (a)nh
   Vowelout f1=3 f2=2500 300 500  f3=100 80  len=45 brk rate
   lengthmod 4
 
-  IF KlattSynth THEN
-    VowelStart(klatt/n^@)
-    FMT(klatt/n^)
-  ENDIF
-
   NextVowelStarts
     VowelStart(n^/n^@)
     VowelStart(n^/n^a)

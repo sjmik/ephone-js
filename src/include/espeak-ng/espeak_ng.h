@@ -51,8 +51,6 @@ typedef enum {
 	ENS_NOT_INITIALIZED          = 0x100004FF,
 	ENS_AUDIO_ERROR              = 0x100005FF,
 	ENS_VOICE_NOT_FOUND          = 0x100006FF,
-	ENS_MBROLA_NOT_FOUND         = 0x100007FF,
-	ENS_MBROLA_VOICE_NOT_FOUND   = 0x100008FF,
 	ENS_EVENT_BUFFER_FULL        = 0x100009FF,
 	ENS_NOT_SUPPORTED            = 0x10000AFF,
 	ENS_UNSUPPORTED_PHON_FORMAT  = 0x10000BFF,
@@ -137,31 +135,6 @@ ESPEAK_NG_API espeak_ng_STATUS
 espeak_ng_SetVoiceByProperties(espeak_VOICE *voice_selector);
 
 ESPEAK_NG_API espeak_ng_STATUS
-espeak_ng_Synthesize(const void *text,
-                     size_t size,
-                     unsigned int position,
-                     espeak_POSITION_TYPE position_type,
-                     unsigned int end_position,
-                     unsigned int flags,
-                     unsigned int *unique_identifier,
-                     void *user_data);
-
-ESPEAK_NG_API espeak_ng_STATUS
-espeak_ng_SynthesizeMark(const void *text,
-                         size_t size,
-                         const char *index_mark,
-                         unsigned int end_position,
-                         unsigned int flags,
-                         unsigned int *unique_identifier,
-                         void *user_data);
-
-ESPEAK_NG_API espeak_ng_STATUS
-espeak_ng_SpeakKeyName(const char *key_name);
-
-ESPEAK_NG_API espeak_ng_STATUS
-espeak_ng_SpeakCharacter(wchar_t character);
-
-ESPEAK_NG_API espeak_ng_STATUS
 espeak_ng_Cancel(void);
 
 ESPEAK_NG_API espeak_ng_STATUS
@@ -176,11 +149,6 @@ espeak_ng_CompileDictionary(const char *dsource,
                             FILE *log,
                             int flags,
                             espeak_ng_ERROR_CONTEXT *context);
-
-ESPEAK_NG_API espeak_ng_STATUS
-espeak_ng_CompileMbrolaVoice(const char *path,
-                             FILE *log,
-                             espeak_ng_ERROR_CONTEXT *context);
 
 ESPEAK_NG_API espeak_ng_STATUS
 espeak_ng_CompilePhonemeData(long rate,

@@ -77,11 +77,6 @@ phoneme n#
   Vowelout f1=3 f2=2500 300 500  f3=100 80  len=45 brk rate
   lengthmod 4
 
-  IF KlattSynth THEN
-    VowelStart(klatt/n^@)
-    FMT(klatt/n^)
-  ENDIF
-
   NextVowelStarts
     VowelStart(n^/n^@)
     VowelStart(n^/n^a)
@@ -173,14 +168,6 @@ phoneme m;
   vcd blb nas
   Vowelout f1=2  f2=1000 -500 -350  f3=-200 80 brk
   lengthmod 4
-
-  IF KlattSynth THEN
-    Vowelin  f1=0  f2=1000 -50 -200  f3=-200 80
-    IF nextPh(isPause2) THEN
-      FMT(klatt/m_)
-    ENDIF
-    FMT(klatt/m)
-  ENDIF
 
   VowelStart(m/mi)
 

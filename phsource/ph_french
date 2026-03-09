@@ -604,14 +604,6 @@ phoneme b
   Vowelin  f1=2  f2=1000 -300 -200  f3=-100 100
   Vowelout f1=2  f2=1000 -500 -300  f3=-300 80 brk
 
-  IF KlattSynth THEN
-    Vowelin f1=1  f2=1000 -500 -300  f3=-300 80
-    IF nextPh(isPause2) THEN
-      FMT(klatt/b)  addWav(x/b_)
-    ENDIF
-    FMT(klatt/b) addWav(x/b)
-  ENDIF
-
   IF PreVoicing THEN
     IF nextPhW(#r) THEN
       FMT(b/xbr)
@@ -726,11 +718,6 @@ phoneme n
   vcd alv nas
   Vowelout f1=2 f2=1700 -300 250  f3=-100 80  rms=20 brk
   lengthmod 4
-
-  IF KlattSynth THEN
-    Vowelin f1=0 f2=1500 -200 200 f3=0 80
-    FMT(klatt/n)
-  ENDIF
 
   NextVowelStarts
     VowelStart(n/n@)
@@ -890,11 +877,6 @@ phoneme v
   length 90
   Vowelin  f1=0  f2=1000 -300 -200  f3=-300 100
   Vowelout f1=0  f2=1000 -500 -300  f3=-300 100
-
-  IF KlattSynth THEN
-    CALL base1/v
-    RETURN
-  ENDIF
 
   IF nextPh(isPause2) THEN
     FMT(voc/v_) addWav(vocw/v)

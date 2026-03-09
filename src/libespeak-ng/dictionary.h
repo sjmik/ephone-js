@@ -39,7 +39,7 @@ const char *EncodePhonemes(const char *p, char *outptr, int *bad_phoneme);
 void DecodePhonemes(const char *inptr, char *outptr);
 char *WritePhMnemonic(char *phon_out, PHONEME_TAB *ph, PHONEME_LIST *plist, int use_ipa, int *flags);
 char *WritePhMnemonicWithStress(char *phon_out, PHONEME_TAB *ph, PHONEME_LIST *plist, int use_ipa, int *flags);
-const char *GetTranslatedPhonemeString(int phoneme_mode);
+const char *GetTranslatedPhonemeString(int phoneme_mode, short* source_map);
 int GetVowelStress(Translator *tr, unsigned char *phonemes, signed char *vowel_stress, int *vowel_count, int *stressed_syllable, int control);
 int IsVowel(Translator *tr, int letter);
 void SetWordStress(Translator *tr, char *output, unsigned int *dictionary_flags, int tonic, int control);

@@ -38,7 +38,6 @@ extern "C"
 #define STEPSIZE      64 // 2.9mS at 22 kHz sample rate
 
 // flags set for frames within a spectrum sequence
-#define FRFLAG_KLATT           0x01 // this frame includes extra data for Klatt synthesizer
 #define FRFLAG_VOWEL_CENTRE    0x02 // centre point of vowel
 #define FRFLAG_LEN_MOD         0x04 // reduce effect of length adjustment
 #define FRFLAG_BREAK_LF        0x08 // but keep f3 upwards
@@ -78,21 +77,6 @@ extern "C"
 extern int embedded_value[N_EMBEDDED_VALUES];
 extern const int embedded_default[N_EMBEDDED_VALUES];
 
-#define N_KLATTP   10 // this affects the phoneme data file format
-#define N_KLATTP2  14 // used in vowel files, with extra parameters for future extensions
-
-#define KLATT_AV      0
-#define KLATT_FNZ     1 // nasal zero freq
-#define KLATT_Tilt    2
-#define KLATT_Aspr    3
-#define KLATT_Skew    4
-
-#define KLATT_Kopen   5
-#define KLATT_AVp     6
-#define KLATT_Fric    7
-#define KLATT_FricBP  8
-#define KLATT_Turb    9
-
 typedef struct { // 64 bytes
 	short frflags;
 	short ffreq[7];
@@ -102,10 +86,6 @@ typedef struct { // 64 bytes
 	unsigned char fwidth[6];   // width/4  f0-5
 	unsigned char fright[3];   // width/4  f0-2
 	unsigned char bw[4];       // Klatt bandwidth BNZ /2, f1,f2,f3
-	unsigned char klattp[5];   // AV, FNZ, Tilt, Aspr, Skew
-	unsigned char klattp2[5];  // continuation of klattp[],  Avp, Fric, FricBP, Turb
-	unsigned char klatt_ap[7]; // Klatt parallel amplitude
-	unsigned char klatt_bp[7]; // Klatt parallel bandwidth  /2
 	unsigned char spare;       // pad to multiple of 4 bytes
 } frame_t; // with extra Klatt parameters for parallel resonators
 
@@ -118,7 +98,7 @@ typedef struct { // 44 bytes
 	unsigned char fwidth[6];  // width/4  f0-5
 	unsigned char fright[3];  // width/4  f0-2
 	unsigned char bw[4];      // Klatt bandwidth BNZ /2, f1,f2,f3
-	unsigned char klattp[5];  // AV, FNZ, Tilt, Aspr, Skew
+	unsigned char spare;       // pad to multiple of 4 bytes
 } frame_t2; // without the extra Klatt parameters
 
 typedef struct {
@@ -156,13 +136,6 @@ typedef struct {
 	unsigned char sqflags;
 	frame_t2 frame[N_SEQ_FRAMES]; // max. frames in a spectrum sequence
 } SPECT_SEQ; // sequence of espeak formant frames
-
-typedef struct {
-	short length_total; // not used
-	unsigned char n_frames;
-	unsigned char sqflags;
-	frame_t frame[N_SEQ_FRAMES]; // max. frames in a spectrum sequence
-} SPECT_SEQK; // sequence of klatt formants frames
 
 typedef struct {
 	short length;
@@ -397,8 +370,6 @@ extern unsigned int embedded_list[];
 extern const unsigned char env_fall[128];
 
 // queue of commands for wavegen
-#define WCMD_KLATT  1
-#define WCMD_KLATT2 2
 #define WCMD_SPECT  3
 #define WCMD_SPECT2 4
 #define WCMD_PAUSE  5
@@ -409,9 +380,7 @@ extern const unsigned char env_fall[128];
 #define WCMD_MARKER 10
 #define WCMD_VOICE   11
 #define WCMD_EMBEDDED 12
-#define WCMD_MBROLA_DATA 13
 #define WCMD_FMT_AMPLITUDE 14
-#define WCMD_SONIC_SPEED 15
 #define WCMD_PHONEME_ALIGNMENT 16
 
 #define N_WCMDQ   170
@@ -421,9 +390,6 @@ extern intptr_t wcmdq[N_WCMDQ][4];
 extern int wcmdq_head;
 extern int wcmdq_tail;
 
-void MarkerEvent(int type, unsigned int char_position, int value, int value2, unsigned char *out_ptr);
-
-extern unsigned char *wavefile_data;
 extern int samplerate;
 
 #define N_ECHO_BUF 5500   // max of 250mS at 22050 Hz
@@ -432,18 +398,9 @@ extern int echo_tail;
 extern int echo_amp;
 extern short echo_buf[N_ECHO_BUF];
 
-void SynthesizeInit(void);
-int  Generate(PHONEME_LIST *phoneme_list, int *n_ph, bool resume);
-int  SpeakNextClause(int control);
 void SetSpeed(int control);
-void SetEmbedded(int control, int value);
-int FormantTransition2(frameref_t *seq, int *n_frames, unsigned int data1, unsigned int data2, PHONEME_TAB *other_ph, int which);
 
 void Write4Bytes(FILE *f, int value);
-
-#if USE_LIBSONIC
-void DoSonicSpeed(int value);
-#endif
 
 #define ENV_LEN  128    // length of pitch envelopes
 #define PITCHfall   0  // standard pitch envelopes
@@ -456,15 +413,8 @@ extern SPEED_FACTORS speed;
 
 extern unsigned char *out_ptr;
 extern unsigned char *out_end;
-extern espeak_EVENT *event_list;
 extern const int version_phdata;
 
-void DoEmbedded(int *embix, int sourceix);
-void DoMarker(int type, int char_posn, int length, int value);
-void DoPhonemeMarker(int type, int char_posn, int length, char *name);
-int DoSample3(PHONEME_DATA *phdata, int length_mod, int amp);
-int DoSpect2(PHONEME_TAB *this_ph, int which, FMT_PARAMS *fmt_params,  PHONEME_LIST *plist, int modulation);
-int PauseLength(int pause, int control);
 const char *WordToString(char buf[5], unsigned int word);
 
 #ifdef __cplusplus

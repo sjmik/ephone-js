@@ -115,10 +115,5 @@ phoneme J
   Vowelin f1=2  f2=2700 400 600  f3=300 80
   Vowelout f1=2 f2=2700 400 600  f3=300 80 colr=1
 
-  IF KlattSynth THEN
-    FMT(klatt/dz_pzd) addWav(ustop/ki, 60)
-  ENDIF
-
-
   FMT(dzh/dz_pzd) addWav(ustop/ki, 60)
 endphoneme

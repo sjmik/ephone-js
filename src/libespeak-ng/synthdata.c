@@ -36,14 +36,10 @@
 #include "error.h"                    // for create_file_error_context, crea...
 #include "phoneme.h"                  // for PHONEME_TAB, PHONEME_TAB_LIST
 #include "speech.h"                   // for path_home, PATHSEP
-#include "mbrola.h"                   // for mbrola_name
 #include "soundicon.h"               // for soundicon_tab
 #include "synthesize.h"               // for PHONEME_LIST, frameref_t, PHONE...
 #include "translate.h"                // for Translator, LANGUAGE_OPTIONS
 #include "voice.h"                    // for ReadTonePoints, tone_points, voice
-
-int n_tunes = 0;
-TUNE *tunes = NULL;
 
 const int version_phdata  = 0x014801;
 
@@ -53,15 +49,11 @@ static int current_phoneme_table;
 PHONEME_TAB *phoneme_tab[N_PHONEME_TAB];
 
 static unsigned short *phoneme_index = NULL;
-static char *phondata_ptr = NULL;
-unsigned char *wavefile_data = NULL;
 static unsigned char *phoneme_tab_data = NULL;
 
 static int n_phoneme_tables;
 PHONEME_TAB_LIST phoneme_tab_list[N_PHONEME_TABS];
 int phoneme_tab_number = 0;
-
-int seq_len_adjust;
 
 static espeak_ng_STATUS ReadPhFile(void **ptr, const char *fname, int *size, espeak_ng_ERROR_CONTEXT *context)
 {
@@ -109,10 +101,8 @@ static espeak_ng_STATUS ReadPhFile(void **ptr, const char *fname, int *size, esp
 
 espeak_ng_STATUS LoadPhData(int *srate, espeak_ng_ERROR_CONTEXT *context)
 {
+	(void)srate;
 	int ix;
-	int version;
-	int length = 0;
-	int rate;
 	unsigned char *p;
 
 	espeak_ng_STATUS status;
@@ -120,25 +110,6 @@ espeak_ng_STATUS LoadPhData(int *srate, espeak_ng_ERROR_CONTEXT *context)
 		return status;
 	if ((status = ReadPhFile((void **)&phoneme_index, "phonindex", NULL, context)) != ENS_OK)
 		return status;
-	if ((status = ReadPhFile((void **)&phondata_ptr, "phondata", NULL, context)) != ENS_OK)
-		return status;
-	if ((status = ReadPhFile((void **)&tunes, "intonations", &length, context)) != ENS_OK)
-		return status;
-	wavefile_data = (unsigned char *)phondata_ptr;
-	n_tunes = length / sizeof(TUNE);
-
-	// read the version number and sample rate from the first 8 bytes of phondata
-	version = 0; // bytes 0-3, version number
-	rate = 0;    // bytes 4-7, sample rate
-	if (wavefile_data) {
-		for (ix = 0; ix < 4; ix++) {
-			version += (wavefile_data[ix] << (ix*8));
-			rate += (wavefile_data[ix+4] << (ix*8));
-		}
-	}
-
-	if (version != version_phdata)
-		return create_version_mismatch_error_context(context, path_home, version, version_phdata);
 
 	// set up phoneme tables
 	p = phoneme_tab_data;
@@ -159,8 +130,6 @@ espeak_ng_STATUS LoadPhData(int *srate, espeak_ng_ERROR_CONTEXT *context)
 	if (phoneme_tab_number >= n_phoneme_tables)
 		phoneme_tab_number = 0;
 
-	if (srate != NULL)
-		*srate = rate;
 	return ENS_OK;
 }
 
@@ -168,12 +137,8 @@ void FreePhData(void)
 {
 	free(phoneme_tab_data);
 	free(phoneme_index);
-	free(phondata_ptr);
-	free(tunes);
 	phoneme_tab_data = NULL;
 	phoneme_index = NULL;
-	phondata_ptr = NULL;
-	tunes = NULL;
 	current_phoneme_table = -1;
 }
 
@@ -204,139 +169,6 @@ int LookupPhonemeString(const char *string)
 	}
 
 	return PhonemeCode(mnem);
-}
-
-frameref_t *LookupSpect(PHONEME_TAB *this_ph, int which, FMT_PARAMS *fmt_params,  int *n_frames, PHONEME_LIST *plist)
-{
-	int ix;
-	int nf;
-	int nf1;
-	int seq_break;
-	frameref_t *frames;
-	int length1;
-	SPECT_SEQ *seq, *seq2;
-	SPECT_SEQK *seqk, *seqk2;
-	frame_t *frame;
-	static frameref_t frames_buf[N_SEQ_FRAMES];
-
-	MAKE_MEM_UNDEFINED(&frames_buf, sizeof(frames_buf));
-
-	seq = (SPECT_SEQ *)(&phondata_ptr[fmt_params->fmt_addr]);
-	seqk = (SPECT_SEQK *)seq;
-	nf = seq->n_frames;
-
-	if (nf >= N_SEQ_FRAMES)
-		nf = N_SEQ_FRAMES - 1;
-
-	seq_len_adjust = fmt_params->fmt2_lenadj + fmt_params->fmt_length;
-	seq_break = 0;
-
-	for (ix = 0; ix < nf; ix++) {
-		if (seq->frame[0].frflags & FRFLAG_KLATT)
-			frame = &seqk->frame[ix];
-		else
-			frame = (frame_t *)&seq->frame[ix];
-		frames_buf[ix].frame = frame;
-		frames_buf[ix].frflags = frame->frflags;
-		frames_buf[ix].length = frame->length;
-		if (frame->frflags & FRFLAG_VOWEL_CENTRE)
-			seq_break = ix;
-	}
-
-	frames = &frames_buf[0];
-	if (seq_break > 0) {
-		if (which == 1)
-			nf = seq_break + 1;
-		else {
-			frames = &frames_buf[seq_break]; // body of vowel, skip past initial frames
-			nf -= seq_break;
-		}
-	}
-
-	// do we need to modify a frame for blending with a consonant?
-	if ((this_ph->type == phVOWEL) && (fmt_params->fmt2_addr == 0) && (fmt_params->use_vowelin))
-		seq_len_adjust += FormantTransition2(frames, &nf, fmt_params->transition0, fmt_params->transition1, NULL, which);
-
-	length1 = 0;
-	nf1 = nf - 1;
-	for (ix = 0; ix < nf1; ix++)
-		length1 += frames[ix].length;
-
-	if (fmt_params->fmt2_addr != 0) {
-		// a secondary reference has been returned, which is not a wavefile
-		// add these spectra to the main sequence
-		seq2 = (SPECT_SEQ *)(&phondata_ptr[fmt_params->fmt2_addr]);
-		seqk2 = (SPECT_SEQK *)seq2;
-
-		// first frame of the addition just sets the length of the last frame of the main seq
-		nf--;
-		for (ix = 0; ix < seq2->n_frames; ix++) {
-			if (seq2->frame[0].frflags & FRFLAG_KLATT)
-				frame = &seqk2->frame[ix];
-			else
-				frame = (frame_t *)&seq2->frame[ix];
-
-			frames[nf].length = frame->length;
-			if (ix > 0) {
-				frames[nf].frame = frame;
-				frames[nf].frflags = frame->frflags;
-			}
-			nf++;
-		}
-	}
-
-	if (length1 > 0) {
-		int length_factor;
-		if (which == 2) {
-			// adjust the length of the main part to match the standard length specified for the vowel
-			// less the front part of the vowel and any added suffix
-
-			int length_std = fmt_params->std_length + seq_len_adjust - 45;
-			if (length_std < 10)
-				length_std = 10;
-			if (plist->synthflags & SFLAG_LENGTHEN)
-				length_std += (phoneme_tab[phonLENGTHEN]->std_length * 2); // phoneme was followed by an extra : symbol
-
-			// can adjust vowel length for stressed syllables here
-
-			length_factor = (length_std * 256)/ length1;
-
-			for (ix = 0; ix < nf1; ix++)
-				frames[ix].length = (frames[ix].length * length_factor)/256;
-		} else {
-			if (which == 1) {
-				// front of a vowel
-				if (fmt_params->fmt_control == 1) {
-					// This is the default start of a vowel.
-					// Allow very short vowels to have shorter front parts
-					if (fmt_params->std_length < 130)
-						frames[0].length = (frames[0].length * fmt_params->std_length)/130;
-				}
-			} else {
-				// not a vowel
-				if (fmt_params->std_length > 0)
-					seq_len_adjust += (fmt_params->std_length - length1);
-			}
-
-			if (seq_len_adjust != 0) {
-				length_factor = ((length1 + seq_len_adjust) * 256)/length1;
-				for (ix = 0; ix < nf1; ix++)
-					frames[ix].length = (frames[ix].length * length_factor)/256;
-			}
-		}
-	}
-
-	*n_frames = nf;
-	return frames;
-}
-
-const unsigned char *GetEnvelope(int index)
-{
-	if (index == 0) {
-		fprintf(stderr, "espeak: No envelope\n");
-		return envelope_data[0]; // not found, use a default envelope
-	}
-	return (unsigned char *)&phondata_ptr[index];
 }
 
 static void SetUpPhonemeTable(int number)
@@ -657,14 +489,6 @@ static bool InterpretCondition(Translator *tr, int control, PHONEME_LIST *plist,
 		{
 		case 1: // PreVoicing
 			return control & 1;
-#if USE_KLATT
-		case 2: // KlattSynth
-			return voice->klattv[0] != 0;
-#endif
-#if USE_MBROLA
-		case 3: // MbrolaSynth
-			return mbrola_name[0] != 0;
-#endif
 		}
 	}
 	return false;

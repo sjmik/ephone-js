@@ -36,11 +36,9 @@
 #include "translate.h"                // for Translator
 #include "soundicon.h"                // for soundicon_tab, n_soundicon_tab
 #include "speech.h"                    // for path_home, PATHSEP
-#include "synthdata.h"                    // for n_tunes, tunes
 #include "voice.h"                    // for ReadNumbers, Read8Numbers, ...
 
 static int CheckTranslator(Translator *tr, const MNEM_TAB *keyword_tab, int key);
-static int LookupTune(const char *name);
 
 void LoadLanguageOptions(Translator *translator, int key, char *keyValue ) {
 if (CheckTranslator(translator, langopts_tab, key) != 0) {
@@ -150,18 +148,7 @@ if (CheckTranslator(translator, langopts_tab, key) != 0) {
 				char names[6][40] = { {0}, {0}, {0}, {0}, {0}, {0} };
                 n = sscanf(keyValue, "%s %s %s %s %s %s", names[0], names[1], names[2], names[3], names[4], names[5]);
                 translator->langopts.intonation_group = 0;
-
-                int value;
-                for (ix = 0; ix < n; ix++) {
-                    if (strcmp(names[ix], "NULL") == 0)
-                        continue;
-
-
-                    if ((value = LookupTune(names[ix])) < 0)
-                        fprintf(stderr, "Unknown tune '%s'\n", names[ix]);
-                    else
-                        translator->langopts.tunes[ix] = value;
-                }
+				fprintf(stdout, "Tones have been removed\n");
 			break;
 			}
 			case V_WORDGAP: {
@@ -207,17 +194,6 @@ void LoadConfig(void) {
 		}
 	}
 	fclose(f);
-}
-
-
-static int LookupTune(const char *name) {
-	int ix;
-
-	for (ix = 0; ix < n_tunes; ix++) {
-		if (strcmp(name, tunes[ix].name) == 0)
-			return ix;
-	}
-	return -1;
 }
 
 int CheckTranslator(Translator *tr, const MNEM_TAB *keyword_tab, int key)

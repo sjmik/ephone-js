@@ -6,27 +6,8 @@ project(espeak-ng
   HOMEPAGE_URL "https://github.com/espeak-ng/espeak-ng"
 )
 
-option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 option(COMPILE_INTONATIONS "Intonation compilation" ON)
-option(ENABLE_TESTS "Enable tests" ON)
-option(WITH_COVERAGE "Enable clang source-based coverage instrumentation" OFF)
-option(WITH_FUZZER "Build libFuzzer targets (requires Clang)" OFF)
 
-include(CTest)
-
-if (WITH_COVERAGE OR WITH_FUZZER)
-  if (NOT CMAKE_C_COMPILER_ID STREQUAL "Clang")
-    message(FATAL_ERROR "WITH_COVERAGE and WITH_FUZZER require Clang")
-  endif()
-endif()
-
-if (WITH_COVERAGE)
-  add_compile_options(-fprofile-instr-generate -fcoverage-mapping)
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
-  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
-endif()
-
-include(cmake/deps.cmake)
 include(cmake/config.cmake)
 add_subdirectory(src)
 
@@ -46,24 +27,6 @@ if (COMPILE_INTONATIONS)
     include(cmake/data.cmake)
   endif()
 endif()
-include(cmake/docs.cmake)
 
 include(cmake/package.cmake)
 include(CPack)
-
-if(ENABLE_TESTS AND NOT CMAKE_CROSSCOMPILING)
-  add_subdirectory(tests)
-endif()
-
-message(STATUS "Configuration:")
-message(STATUS "  shared: ${BUILD_SHARED_LIBS}")
-message(STATUS "  mbrola: ${USE_MBROLA} (${MBROLA_BIN})")
-message(STATUS "  libsonic: ${USE_LIBSONIC} (${SONIC_LIB} ${SONIC_INC})")
-message(STATUS "  libpcaudio: ${USE_LIBPCAUDIO} (${PCAUDIO_LIB} ${PCAUDIO_INC})")
-message(STATUS "  klatt: ${USE_KLATT}")
-message(STATUS "  speech-player: ${USE_SPEECHPLAYER}")
-message(STATUS "  async: ${USE_ASYNC}")
-
-install(
-  DIRECTORY vim/ftdetect vim/syntax DESTINATION share/vim/vimfiles
-)

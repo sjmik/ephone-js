@@ -1,170 +1,142 @@
-# espeakng.js
+# ephone - eSpeak NG phoneme generation
 
-This port of
-[eSpeak-ng](https://github.com/espeak-ng/espeak-ng)
-to Javascript via
-[emscripten](http://emscripten.org)
-allows client-side text-to-speech synthesis in any browser
-supporting Web workers and the Web Audio API.
+This package contains just the phoneme generation from [espeak-ng](https://github.com/espeak-ng/espeak-ng), compiled to wasm via emscripten. The main reason I created this instead of just using the existing phonemizer package, is that this one provides a map between the individual parts of the source text and the output IPA. Or, if you don't need that, it can just generate IPA ([International Phonetic Alphabet](https://wikipedia.org/wiki/International_Phonetic_Alphabet)) too.
 
-* Version: 1.49.1
-* Date: 2017-05-01
-* License: the GNU General Public License, Version 3 (GPLv3)
-* Size: 3.2 MB (including all the voices)
+Other features include multi-language support and a much smaller package size (depending on which languages you select). If using only the default en-US, it gzips down to 375KB. See [languages](#languages) for more.
 
+## Usage examples
 
-## Demo
+### Simple English:
 
-For an online demo, visit [this page](https://www.readbeyond.it/espeakng/).
+```javascript
+import createEphone from 'ephone';
+const ephone = await createEphone();
+ephone.textToIpa('Hello!');
 
-If you prefer a local demo, open the file [`demo.html`](demo.html) in your browser.
-(Depending on your browser, you might need to serve it via a Web server.
-A simple way consists in calling `$ python -m SimpleHTTPServer 8000`
-and pointing your browser to `http://localhost:8000/demo.html`)
-
-
-## Usage
-
-1. Include `js/espeakng.js` in your HTML file:
-
-    ```html
-    <script type="text/javascript" src="js/espeakng.js"></script>
-    ```
-
-2. Create a new `eSpeakNG` instance with the path of the worker
-   (e.g., `js/espeakng.worker.js`) as the first argument.
-   You can supply a callback function that will be called once the worker is ready:
-
-    ```js
-    <script>
-      var tts = new eSpeakNG('js/espeakng.worker.js', function(){
-        // now tts is initialized and
-        // you can call tts.function(...)
-        ...
-      });
-    </script>
-    ```
-
-3. Functions exposed by the `eSpeakNG` object:
-
-    * `list_voices(cb(voices))`: obtain the list of available voices, passing it (`voices`) to the callback function `cb`
-    * `set_rate(value)`: set the rate of the synthesized speech, `value` must be an integer in `[80..450]`, default `175`
-    * `set_pitch(value)`: set the pitch of the synthesized speech, `value` must be an integer in `[0..99]`, default `50`
-    * `set_voice.apply(espeakng, voice)`: set the voice for synthesizing speech, `voice` must be the code string for the desired voice (e.g., `en`, `en-us`, `it`, etc.)
-    * `synthesize(text, cb(samples, events))`: synthesize the given string `text` and call the callback function `cb` when done, passing the generated audio samples (`samples`) and events (`events`)
-
-    See the file [`demo.html`](demo.html) for details.
-
-
-## Download
-
-You can download pre-built JS/data files from the
-[jsdelivr CDN](http://www.jsdelivr.com/).
-You need to get the following files:
-
-```
-# Latest version
-https://cdn.jsdelivr.net/espeakng.js/latest/espeakng.min.js
-https://cdn.jsdelivr.net/espeakng.js/latest/espeakng.worker.js
-https://cdn.jsdelivr.net/espeakng.js/latest/espeakng.worker.data
-
-# Specific version
-https://cdn.jsdelivr.net/espeakng.js/1.49.0/espeakng.min.js
-https://cdn.jsdelivr.net/espeakng.js/1.49.0/espeakng.worker.js
-https://cdn.jsdelivr.net/espeakng.js/1.49.0/espeakng.worker.data
+> "həlˈoʊ!"
 ```
 
-For details, see the
-[espeakng.js-cdn](https://github.com/pettarin/espeakng.js-cdn)
-repository.
+### English with source map:
 
+```javascript
+import createEphone from 'ephone';
 
-## Building
+document.getElementById('app').innerHTML = `<div>
+    <div>Source: <span id="source-text" /></div>
+    <div>Result: <span id="result-ipa" /></div>
+    <div id="source-spans" />
+    <div id="ipa-spans" />
+  </div>`;
 
-1. Make sure you have `emscripten`
-   [installed and activated](http://kripken.github.io/emscripten-site/docs/getting_started/downloads.html),
-   and configured in your shell.
+const appendColorSpan = (text, color, id) => {
+  const span = document.createElement('span');
+  span.textContent = text;
+  span.style.backgroundColor = color;
+  document.getElementById(id).append(span);
+};
 
-2. Clone the repository, enter the `espeak-ng` directory, and initialize it:
+const ephone = await createEphone();
+const result = ephone.textToIpaWithSourceMap("Hello! Why don't you have a seat over there?");
 
-    ```bash
-    $ git clone https://github.com/espeak-ng/espeak-ng
-    $ cd espeak-ng
-    $ ./autogen.sh
-    ```
+document.getElementById('source-text').textContent = result.text;
+document.getElementById('result-ipa').textContent = result.ipa;
 
-3. Compile `espeak-ng`:
+for (const [source, ipa] of result.asSpans()) {
+  const color = colors.shift();
+  appendColorSpan(source, color, 'source-spans');
+  appendColorSpan(ipa, color, 'ipa-spans');
+}
+```
 
-    ```bash
-    $ ./configure --prefix=/usr --without-async --without-mbrola --without-sonic
-    $ make
-    ```
+<!-- ![English Sample](screenshots/en.png) -->
 
-    Instead, if you just want a subset of languages of your choice,
-    run `make XX` for each of them, where `XX` is the language code.
-    For example:
+![English Sample](https://github.com/sjmik/ephone-js/raw/HEAD/emscripten/screenshots/en.png)
 
-    ```bash
-    $ # build English only
-    $ make en
-    $
-    $ # build English, Italian, and German
-    $ make en && make it && make de
-    ```
+### Other languages:
 
-4. Enter the `src/ucd-tools` directory, `make clean` it, and compile with `emconfigure` and `emmake`:
+By default, only the data necessary for American English are loaded. To use a different language (or multiple languages), first import its language pack, then use it to initialize the ephone module. This way, any modern javascript bundler should be smart enough to deliver only the files you actually use.
 
-    ```bash
-    $ cd src/ucd-tools
-    $ ./autogen.sh
-    $ make clean
-    $ emconfigure ./configure
-    $ emmake make
-    $ cd ../..
-    ```
+```javascript
+import createEphone, { roa } from 'ephone'; // roa = Romance family
 
-5. Recompile the `espeak-ng` library with `emconfigure` and `emmake`:
+const ephone = await createEphone(roa);
+ephone.setVoice('es'); // 'es' is the first language in roa, so this doesn't actually change anything
+const result = ephone.textToIpaWithSourceMap('De muchos colores me gustan a mí.');
+```
 
-    ```bash
-    $ emconfigure ./configure --prefix=/usr --without-async --without-mbrola --without-sonic
-    $ emmake make src/libespeak-ng.la
-    ```
+<!-- ![Spanish Sample](screenshots/es.png) -->
 
-6. Enter the `emscripten` directory and compile the JS worker with `emmake`:
+![Spanish Sample](https://github.com/sjmik/ephone-js/raw/HEAD/emscripten/screenshots/es.png)
 
-    ```bash
-    $ cd emscripten
-    $ emmake make
-    ```
+### Multiple languages and caveats:
 
-7. The `js/` directory should contain the output JS files:
+It's a similar story for loading multiple languages. Notice that some languages may be less functional than others. For example, the Japanese "私" produces "tʃˈaɪniːzlˈe̞tə", or... 🤦‍♂️ "chinese letter". Also, spaces are needed between the Japanese words to produce a proper mapping. And in the Chinese example, the tones are indicated by number. It may be possible to change this, I have not looked into it deeply.
 
-    * `espeakng.js`,
-    * `espeakng.worker.js`, and
-    * `espeakng.worker.data`.
+```javascript
+import createEphone, { jpx, sit } from 'ephone'; // sit = Sino-Tibetan family
 
-### Notes
+const ephone = await createEphone([jpx, sit]);
 
-* Even if you build only a subset of languages,
-  the `list_voices()` function will still list all the available voices.
-  However, if you try using language that has not been built,
-  you will get a runtime error.
-  (TODO: fix this issue.)
-* The `-O3` optimization flag is passed to `emscripten` by default,
-  achieving a considerable reduction of the size of the generated JS worker.
-  If you want to omit it, for example for debug purposes,
-  just export the `EM_DEBUG` environment variable with value `1`
-  (i.e., `$ export EM_DEBUG=1`) before step 3.
-* To remove intermediate files compiled by emscripten,
-  run `$ emmake clean-intermediate`.
-  This command will keep the output JS files, if any.
-* To remove all the files compiled by emscripten,
-  including the output JS files,
-  run `$ emmake clean`.
+ephone.setVoice('ja');
+result = ephone.textToIpaWithSourceMap('これ は 私 の ペン です。');
 
+ephone.setVoice('cmn');
+result = ephone.textToIpaWithSourceMap('石室詩士史氏嗜豕');
+```
 
-## Credits
+<!-- ![Japanese Sample](screenshots/ja.png) ![Chinese Sample](screenshots/cmn.png) -->
 
-[Eitan Isaacson](https://blog.monotonous.org/) wrote the [original glue code](https://github.com/eeejay/espeak/tree/emscripten) for compiling eSpeak to Javascript via emscripten.
+![Japanese Sample](https://github.com/sjmik/ephone-js/raw/HEAD/emscripten/screenshots/ja.png) ![Chinese Sample](https://github.com/sjmik/ephone-js/raw/HEAD/emscripten/screenshots/cmn.png)
 
-[Alberto Pettarin](http://www.albertopettarin.it) adapted Eitan's files [to work with eSpeak-ng](https://github.com/pettarin/espeak-ng/tree/emscripten) and wrote this `README` file.
+### Listing voices:
+
+```javascript
+import createEphone, { en_all, roa, gmw } from 'ephone';
+const ephone = await createEphone([en_all, roa, gmw]);
+ephone.getVoices()
+
+> [
+    { name: "en",     desc: "English (Great Britain)" },
+    { name: "en-US",  desc: "English (America)" },
+    { name: "es",     desc: "Spanish (Spain)" },
+    { name: "es-419", desc: "Spanish (Latin America)" },
+    { name: "fr",     desc: "French (France)" },
+    ...
+  ]
+```
+
+## Languages
+
+I built this with a handful of language packs. The packs are implemented as ES6 modules, so as mentioned above, javascript bundlers should be capable of recognizing which are used in your code and only ship the needed files. Here's a list of what is available:
+
+| Module   | Name             | Description                          |
+| -------- | ---------------- | ------------------------------------ |
+| `en_us`  | `en-US`          | English (America)                    |
+| `en_all` | `en`             | English (Great Britain)              |
+|          | `en-029`         | English (Caribbean)                  |
+|          | `en-GB-scotland` | English (Scotland)                   |
+|          | `en-GB-x-gbclan` | English (Lancaster)                  |
+|          | `en-GB-x-gbcwmd` | English (West Midlands)              |
+|          | `en-GB-x-rp`     | English (Received Pronunciation)     |
+|          | `en-US`          | English (America)                    |
+| `roa`    | `es`             | Spanish (Spain)                      |
+|          | `es-419`         | Spanish (Latin America)              |
+|          | `fr`             | French (France)                      |
+|          | `it`             | Italian                              |
+|          | `pt`             | Portuguese (Portugal)                |
+|          | `pt-BR`          | Portuguese (Brazil)                  |
+| `gmw`    | `de`             | German                               |
+|          | `nl`             | Dutch                                |
+| `sit`    | `cmn`            | Chinese (Mandarin, latin as English) |
+|          | `yue`            | Chinese (Cantonese)                  |
+| `jpx`    | `ja`             | Japanese                             |
+| `zlx`    | `ru`             | Russian                              |
+|          | `uk`             | Ukrainian                            |
+|          | `pl`             | Polish                               |
+
+There's also one more module: `all`, which contains every language from eSpeak NG. Check out the full list at the [parent project](https://github.com/espeak-ng/espeak-ng/blob/HEAD/docs/languages.md). This is a pretty large file at 18MB, or 14MB gzipped. The size may not be a problem for some projects, but if you just need one or two specific languages, it's not too hard to build your own. Check out the build scripts on github.
+
+## License Information
+
+[GPL version 3](https://github.com/sjmik/ephone-js/blob/HEAD/COPYING) is inherited from [eSpeak NG Text-to-Speech](https://github.com/espeak-ng/espeak-ng).
+Complete change history is available via github.

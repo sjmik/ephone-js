@@ -46,7 +46,7 @@ phoneme a
 
   ChangeIfDiminished(a#)
 
-  IF nextPh(isNasal) AND NOT KlattSynth THEN
+  IF nextPh(isNasal) THEN
     FMT(vnasal/ee_n2)
   ELSEIF nextPh(r) AND thisPh(isStressed) THEN
     length 190
@@ -420,13 +420,6 @@ phoneme t#    // reduced [t] as in "city"
 
   IF nextPh(isNotVowel) THEN
     ChangePhoneme(t)
-  ENDIF
-
-  IF KlattSynth THEN
-    IF PreVoicing THEN
-      FMT(klatt/x_tap)
-    ENDIF
-    FMT(klatt/tap2) addWav(x/d, 70)
   ENDIF
 
   IF PreVoicing THEN

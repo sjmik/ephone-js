@@ -100,8 +100,6 @@ static const keywtab_t k_conditions[] = {
 	{ "prev2PhW",  tWHICH_PHONEME, 10 },
 
 	{ "PreVoicing",  tTEST, 0xf01 },
-	{ "KlattSynth",  tTEST, 0xf02 },
-	{ "MbrolaSynth", tTEST, 0xf03 },
 
 	{ NULL, 0, 0 }
 };
@@ -908,13 +906,11 @@ static espeak_ng_STATUS LoadSpect(CompileContext *ctx, const char *path, int con
 	float pkheight;
 	int marker1_set = 0;
 	int frame_vowelbreak = 0;
-	int klatt_flag = 0;
 	SpectFrame *fr;
 	frame_t *fr_out;
 	char filename[sizeof(path_home)+20];
 
 	SPECT_SEQ seq_out;
-	SPECT_SEQK seqk_out;
 
 	// create SpectSeq and import data
 	spectseq = SpectSeqCreate();
@@ -927,14 +923,6 @@ static espeak_ng_STATUS LoadSpect(CompileContext *ctx, const char *path, int con
 		error(ctx, "Bad vowel file: '%s'", path);
 		SpectSeqDestroy(spectseq);
 		return status;
-	}
-
-	// do we need additional klatt data ?
-	for (frame = 0; frame < spectseq->numframes; frame++) {
-		for (ix = 5; ix < N_KLATTP2; ix++) {
-			if (spectseq->frames[frame]->klatt_param[ix] != 0)
-				klatt_flag = FRFLAG_KLATT;
-		}
 	}
 
 	*addr = ftell(ctx->f_phdata);
@@ -971,16 +959,13 @@ static espeak_ng_STATUS LoadSpect(CompileContext *ctx, const char *path, int con
 		fr = spectseq->frames[frame];
 
 		if (fr->keyframe) {
-			if (klatt_flag)
-				fr_out = &seqk_out.frame[n_frames];
-			else
-				fr_out = (frame_t *)&seq_out.frame[n_frames];
+			fr_out = (frame_t *)&seq_out.frame[n_frames];
 
 			x = (int)(fr->length + 0.5); // round to nearest mS
 			if (x > 255) x = 255;
 			fr_out->length = x;
 
-			fr_out->frflags = fr->markers | klatt_flag;
+			fr_out->frflags = fr->markers;
 
 			rms = (int)GetFrameRms(fr, spectseq->amplitude);
 			if (rms > 255) rms = 255;
@@ -1019,27 +1004,6 @@ static espeak_ng_STATUS LoadSpect(CompileContext *ctx, const char *path, int con
 				}
 			}
 
-			for (ix = 0; ix < 5; ix++) {
-				fr_out->klattp[ix] = fr->klatt_param[ix];
-
-				fr_out->klattp[KLATT_FNZ] = fr->klatt_param[KLATT_FNZ] / 2;
-			}
-
-			if (klatt_flag) {
-				// additional klatt parameters
-				for (ix = 0; ix < 5; ix++)
-					fr_out->klattp2[ix] = fr->klatt_param[ix+5];
-
-				for (peak = 0; peak < 7; peak++) {
-					fr_out->klatt_ap[peak] = fr->peaks[peak].klt_ap;
-
-					x = fr->peaks[peak].klt_bp / 2;
-					if (x > 255) x = 255;
-					fr_out->klatt_bp[peak] = x;
-				}
-				fr_out->spare = 0;
-			}
-
 			if (fr_out->bw[1] == 0) {
 				fr_out->bw[0] = 89 / 2;
 				fr_out->bw[1] = 90 / 2;
@@ -1051,28 +1015,14 @@ static espeak_ng_STATUS LoadSpect(CompileContext *ctx, const char *path, int con
 		}
 	}
 
-	if (klatt_flag) {
-		seqk_out.n_frames = seq_out.n_frames;
-		seqk_out.sqflags = seq_out.sqflags;
-		seqk_out.length_total = seq_out.length_total;
 
-		ix = (char *)(&seqk_out.frame[seqk_out.n_frames]) - (char *)(&seqk_out);
-		fwrite(&seqk_out, ix, 1, ctx->f_phdata);
-		while (ix & 3)
-		{
-			// round up to multiple of 4 bytes
-			fputc(0, ctx->f_phdata);
-			ix++;
-		}
-	} else {
-		ix = (char *)(&seq_out.frame[seq_out.n_frames]) - (char *)(&seq_out);
-		fwrite(&seq_out, ix, 1, ctx->f_phdata);
-		while (ix & 3)
-		{
-			// round up to multiple of 4 bytes
-			fputc(0, ctx->f_phdata);
-			ix++;
-		}
+	ix = (char *)(&seq_out.frame[seq_out.n_frames]) - (char *)(&seq_out);
+	fwrite(&seq_out, ix, 1, ctx->f_phdata);
+	while (ix & 3)
+	{
+		// round up to multiple of 4 bytes
+		fputc(0, ctx->f_phdata);
+		ix++;
 	}
 
 	SpectSeqDestroy(spectseq);
@@ -2458,8 +2408,6 @@ espeak_ng_CompilePhonemeDataPath(long rate,
 		fclose(ctx->f_prog_log);
 
 	LoadPhData(NULL, NULL);
-
-	WavegenFini();
 
 	fprintf(log, "Compiled phonemes: %d errors.\n", ctx->error_count);
 

@@ -276,13 +276,6 @@ phoneme *    // reduced [t] as in "city"
   Vowelin f1=1  f2=1700 -300 300  f3=-100 80
   Vowelout f1=2 f2=1700 -300 300  f3=-100 80
 
-  IF KlattSynth THEN
-    IF PreVoicing THEN
-      FMT(klatt/x_tap)
-    ENDIF
-    FMT(klatt/tap2) addWav(x/d, 70)
-  ENDIF
-
   IF PreVoicing THEN
     FMT(d/x_tap)
   ENDIF

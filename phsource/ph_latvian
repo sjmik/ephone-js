@@ -338,14 +338,6 @@ phoneme m // copied from standard m phoneme with rule for 'mm'
   Vowelout f1=2  f2=1000 -500 -350  f3=-200 80 brk
   lengthmod 4
 
-  IF KlattSynth THEN
-    Vowelin  f1=0  f2=1000 -50 -200  f3=-200 80
-    IF nextPh(isPause2) THEN
-      FMT(klatt/m_)
-    ENDIF
-    FMT(klatt/m)
-  ENDIF
-
   NextVowelStarts
     VowelStart(m/m@)
     VowelStart(m/ma)
@@ -456,11 +448,6 @@ phoneme z- // Shorter version of z
   voicingswitch s
   Vowelout f1=0  f2=1700 -300 300  f3=-100 60  len=50
 
-  IF KlattSynth THEN
-    Vowelin f1=0 f2=1390 -300 300 f3=0 0
-    Vowelout f1=1  f2=1390 -300 300  f3=-100 60  len=50 brk
-  ENDIF
-
   IF nextPh(isPause2) THEN
     FMT(voc/z_) addWav(ufric/s_, 70)
   ENDIF
@@ -474,11 +461,6 @@ phoneme z`  // Shortest version of z for diphthong dz
   voicingswitch s
   length 10
   Vowelout f1=0  f2=1700 -300 300  f3=-100 60  len=50
-
-  IF KlattSynth THEN
-    Vowelin f1=0 f2=1390 -300 300 f3=0 0
-    Vowelout f1=1  f2=1390 -300 300  f3=-100 60  len=50 brk
-  ENDIF
 
   IF nextPh(isPause2) THEN
     length 20
@@ -495,13 +477,6 @@ phoneme Z` // Shortened version of Z for diphthong dZ
   lengthmod 6
   Vowelin  f1=0  f2=2000 0 300  f3=-200 80
   Vowelout f1=2  f2=2000 0 300  f3=-200 80 brk
-
-  IF KlattSynth THEN
-    IF nextPh(isPause2) THEN
-      FMT(klatt/zh_, 70) addWav(vocw/zh, 70)
-    ENDIF
-    FMT(klatt/zh) addWav(vocw/zh, 130)
-  ENDIF
 
   IF nextPh(isPause2) THEN
     FMT(voc/zh_, 80) addWav(vocw/zh, 70)
