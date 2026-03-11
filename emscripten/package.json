@@ -1,6 +1,6 @@
 {
   "name": "ephone",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Multi-language phoneme generation from eSpeak NG",
   "type": "module",
   "main": "./ephone.js",

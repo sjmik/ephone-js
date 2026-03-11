@@ -437,6 +437,7 @@ static const unsigned short ipa1[96] = {
 #define N_PHON_OUT  500  // realloc increment
 static char *phon_out_buf = NULL;   // passes the result of GetTranslatedPhonemeString()
 static unsigned int phon_out_size = 0;
+WORD_PH_DATA worddata_WritePhMnemonic;
 
 char *WritePhMnemonic(char *phon_out, PHONEME_TAB *ph, PHONEME_LIST *plist, int use_ipa, int *flags)
 {
@@ -470,8 +471,10 @@ char *WritePhMnemonic(char *phon_out, PHONEME_TAB *ph, PHONEME_LIST *plist, int 
 
 		if (plist == NULL)
 			InterpretPhoneme2(ph->code, &phdata);
-		else
-			InterpretPhoneme(NULL, 0, plist, plist, &phdata, NULL);
+		else {
+			PHONEME_LIST* plist_start = &phoneme_list[1]; // GetTranslatedPhonemeString: plist = &phoneme_list[ix=1];
+			InterpretPhoneme(NULL, 0, plist, plist_start, &phdata, &worddata_WritePhMnemonic);
+		}
 
 		p = phdata.ipa_string;
 		if (*p == 0x20) {
@@ -620,6 +623,7 @@ const char *GetTranslatedPhonemeString(int phoneme_mode, short* source_map) {
 		use_tie = 0;
 	}
 
+	memset(&worddata_WritePhMnemonic, 0, sizeof(worddata_WritePhMnemonic));
 	for (ix = 1; ix < (n_phoneme_list-2); ix++) {
 		buf = phon_buf;
 
