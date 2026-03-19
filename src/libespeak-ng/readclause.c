@@ -161,6 +161,10 @@ static int GetC(void)
 	return text_decoder_getc(p_decoder);
 }
 
+int GetCharacterCount(void) {
+	return count_characters;
+}
+
 static void UngetC(int c)
 {
 	ungot_char = c;

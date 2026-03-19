@@ -47,7 +47,7 @@ int ReadClause(Translator *tr,
 		int *tone_type,
 		char *voice_change);
 
-
+int GetCharacterCount(void);
 
 
 #ifdef __cplusplus

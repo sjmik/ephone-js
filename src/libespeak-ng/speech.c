@@ -261,7 +261,7 @@ ESPEAK_API const char *espeak_TextToPhonemes(const void **textptr, int textmode,
 
 static int utf8_count(const char* str, const char* until) {
     int count = 0;
-    while (str != until) {
+    while (str < until) {
         if ((*str & 0xC0) != 0x80) count++;  // Not a continuation byte
         str++;
     }
@@ -270,11 +270,10 @@ static int utf8_count(const char* str, const char* until) {
 
 // Recommend source map capacity to be at least twice the number of words in the input.
 ESPEAK_API char* espeak_TextToIpaWithSourceMap(const char** textptr, int* out_source_map, int map_capacity) {
-	InitText(0);
+    InitText(0);
     if (!p_decoder) p_decoder = create_text_decoder();
 
-    int utf8_consumed_len = 0;
-    int decoder_overread = 0;
+	int utf8_consumed_len = 0;
     int result_len = 0;
     int result_capacity = 512;
     char* result = malloc(result_capacity);
@@ -291,10 +290,12 @@ ESPEAK_API char* espeak_TextToIpaWithSourceMap(const char** textptr, int* out_so
         TranslateClauseWithTerminator(translator, NULL, NULL, &terminator);
         const char* decoder_current = text_decoder_get_buffer(p_decoder);
         if (decoder_current == *textptr) break;
-
+        *textptr = decoder_current;
+		
         const char* phonemes = GetTranslatedPhonemeString(espeakPHONEMES_IPA, source_map);
         if (!phonemes || phonemes[0] == '\0') break;
         if (result_len > 0) result[result_len++] = ' ';
+        const int utf8_result_len = utf8_count(result, result + result_len);
 
         int i = 0;
         while (i < N_CLAUSE_WORDS * 2) {
@@ -302,15 +303,13 @@ ESPEAK_API char* espeak_TextToIpaWithSourceMap(const char** textptr, int* out_so
             const short phoneme_pos = source_map[i++];
             if (source_pos < 0 || phoneme_pos < 0) break;
             if (map_capacity < out_map_index + 2) {
-				if (out_map_index < map_capacity) out_source_map[out_map_index] = -1;
+                if (out_map_index < map_capacity) out_source_map[out_map_index] = -1;
                 break;
             }
             out_source_map[out_map_index++] = source_pos + utf8_consumed_len;
-            out_source_map[out_map_index++] = phoneme_pos + utf8_count(result, result + result_len);
+            out_source_map[out_map_index++] = phoneme_pos + utf8_result_len;
         }
-        if (decoder_current) utf8_consumed_len += utf8_count(*textptr - decoder_overread, decoder_current - 1);
-        *textptr = decoder_current;
-        decoder_overread = 1;
+        utf8_consumed_len = GetCharacterCount();
 
         char terminator_char = 0;
         switch (terminator & CLAUSE_INTONATION_TYPE) {
@@ -329,6 +328,7 @@ ESPEAK_API char* espeak_TextToIpaWithSourceMap(const char** textptr, int* out_so
         }
 
         const int phonemes_len = strlen(phonemes);
+        // Room for the sentence terminator, possibly a space, and the string terminator.
         while (result_len + phonemes_len + 3 > result_capacity) {
             result_capacity <<= 1;
             char* new_result = realloc(result, result_capacity);
@@ -345,7 +345,12 @@ ESPEAK_API char* espeak_TextToIpaWithSourceMap(const char** textptr, int* out_so
         result[result_len] = '\0';
     }
 
-    if (out_source_map) out_source_map[out_map_index] = -1;
+    if (out_source_map) {
+        if (out_map_index < map_capacity)
+            out_source_map[out_map_index] = -1;
+        else if (map_capacity > 0)
+            out_source_map[map_capacity - 1] = -1;
+    }
     return result;
 }
 
